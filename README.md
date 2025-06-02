@@ -103,8 +103,7 @@ Scan the QR code with your Expo Go app or run on an emulator/simulator.
 **Abhishek Nepal** is a passionate software engineer and product designer, specializing in mobile and web app development. With a keen eye for detail and a relentless drive for user-centric design, Abhishek delivers products that are not only functional but delightful to use.
 
 - 🌐 [www.abisek.dev](https://www.abisek.dev)
-- 💼 [LinkedIn](https://www.linkedin.com/in/abhisheknepaldev)
-- 🐦 [Twitter/X](https://twitter.com/abhisheknepal)
+- 💼 [LinkedIn](https://www.linkedin.com/in/absknpl)
 
 > _"Arkive is more than just an app—it's your digital memory, your personal assistant, and your peace of mind. Experience the future of document management, today."_
 
