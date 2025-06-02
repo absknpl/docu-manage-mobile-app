@@ -6,7 +6,8 @@ import {
   Image, 
   ActivityIndicator, 
   StyleSheet, 
-  TouchableOpacity 
+  TouchableOpacity, 
+  Linking 
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 
@@ -14,9 +15,17 @@ export default function DocumentViewer({ document, visible, onClose }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const handleDownload = () => {
-    // In React Native, you would use something like expo-file-system for downloads
-    alert('Download functionality would be implemented here');
+    if (document?.file?.uri) {
+      Linking.openURL(document.file.uri);
+    } else {
+      alert('No file to download.');
+    }
   };
+
+  // Helper to check file type
+  const isImage = document?.file?.type?.includes('image');
+  const isPDF = document?.file?.type?.includes('pdf');
+  const isSupported = isImage;
 
   return (
     <Modal
@@ -37,7 +46,7 @@ export default function DocumentViewer({ document, visible, onClose }) {
                 onPress={handleDownload}
               >
                 <Feather name="download" size={18} color="#fff" />
-                <Text style={styles.downloadBtnText}>Download</Text>
+                <Text style={styles.downloadBtnText}>Open</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.closeBtn}
@@ -47,32 +56,33 @@ export default function DocumentViewer({ document, visible, onClose }) {
               </TouchableOpacity>
             </View>
           </View>
-          
           <View style={styles.content}>
-            {isLoading && (
-              <View style={styles.loading}>
-                <ActivityIndicator size="large" color="#6366f1" />
-                <Text style={styles.loadingText}>Loading document...</Text>
-              </View>
-            )}
-            
-            {document?.file?.type?.includes('image') ? (
-              <Image
-                source={{ uri: document.file.uri }}
-                style={styles.image}
-                onLoad={() => setIsLoading(false)}
-                resizeMode="contain"
-              />
+            {isImage ? (
+              <>
+                {isLoading && (
+                  <View style={styles.loading}>
+                    <ActivityIndicator size="large" color="#6366f1" />
+                    <Text style={styles.loadingText}>Loading image...</Text>
+                  </View>
+                )}
+                <Image
+                  source={{ uri: document.file.uri }}
+                  style={styles.image}
+                  onLoad={() => setIsLoading(false)}
+                  resizeMode="contain"
+                />
+              </>
             ) : (
               <View style={styles.fallback}>
-                <Feather name="file" size={48} color="#64748b" />
+                <Feather name={isPDF ? "file-text" : "file"} size={48} color="#64748b" />
                 <Text style={styles.fallbackText}>
-                  Preview not available for this file type
+                  {isPDF
+                    ? 'PDF preview is not supported in-app. Tap Open to view in your browser or PDF viewer.'
+                    : 'Preview not available for this file type. Tap Open to view in the appropriate app.'}
                 </Text>
               </View>
             )}
           </View>
-          
           <View style={styles.meta}>
             <Text style={styles.metaText}>
               <Text style={styles.metaLabel}>Type:</Text> {document?.file?.type || 'Unknown'}

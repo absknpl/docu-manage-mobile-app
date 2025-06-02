@@ -17,4 +17,7 @@ export const TAG_ICONS = {
   'Work': <Feather name="briefcase" size={16} color="#6366f1" />
 };
 
+// TODO: For full theme support, refactor to a function that takes a color prop if you want icons to match theme accent.
+// For now, icons remain blue for both modes.
+
 export const TAGS = Object.keys(TAG_ICONS);

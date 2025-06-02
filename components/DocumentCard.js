@@ -7,10 +7,11 @@ import { TAG_ICONS } from './TagIcons';
 import { useDocuments } from '../contexts/DocumentsContext';
 import { useThemeMode } from '../contexts/ThemeContext';
 
-export default function DocumentCard({ document, onPress, onDelete }) {
+export default function DocumentCard({ document, onPress, onDelete, colors }) {
   const [showViewer, setShowViewer] = useState(false);
   const { deleteDocument } = useDocuments();
   const { colorScheme } = useThemeMode();
+  const isDarkMode = colorScheme === 'dark';
 
   const getFileIcon = () => {
     if (document.file?.type?.includes('pdf')) return '📄';
@@ -23,7 +24,11 @@ export default function DocumentCard({ document, onPress, onDelete }) {
       <TouchableOpacity
         style={[
           styles.card,
-          colorScheme === 'dark' && { backgroundColor: 'rgba(24,25,38,0.92)', borderColor: 'rgba(99,102,241,0.18)' }
+          {
+            backgroundColor: colors.cardBackground,
+            borderColor: colors.border,
+            shadowColor: isDarkMode ? '#000' : '#64748b',
+          },
         ]}
         onPress={onPress}
         activeOpacity={0.92}
@@ -35,7 +40,7 @@ export default function DocumentCard({ document, onPress, onDelete }) {
               onPress={() => setShowViewer(true)}
               style={styles.actionButton}
             >
-              <Feather name="eye" size={18} color="#64748b" />
+              <Feather name="eye" size={18} color={colors.secondaryText} />
             </TouchableOpacity>
             <TouchableOpacity 
               onPress={(e) => {
@@ -44,25 +49,26 @@ export default function DocumentCard({ document, onPress, onDelete }) {
               }}
               style={styles.actionButton}
             >
-              <Feather name="trash-2" size={18} color="#64748b" />
+              <Feather name="trash-2" size={18} color={colors.secondaryText} />
             </TouchableOpacity>
           </View>
         </View>
         
         <View style={styles.documentInfo}>
-          <Text style={styles.title}>{document.title}</Text>
+          <Text style={[styles.title, { color: colors.primaryText }]}>{document.title}</Text>
           
           {document.category && (
-            <View style={styles.category}>
+            <View style={[styles.category, { backgroundColor: isDarkMode ? 'rgba(99,102,241,0.18)' : 'rgba(99,102,241,0.1)' }] }>
+              {/* Pass accent color to TagIcons if needed */}
               {TAG_ICONS[document.category] || TAG_ICONS['Other']}
-              <Text style={styles.categoryText}>{document.category}</Text>
+              <Text style={[styles.categoryText, { color: colors.accent }]}>{document.category}</Text>
             </View>
           )}
           
           {document.expirationDate && (
             <View style={styles.expiry}>
-              <Feather name="calendar" size={14} color="#64748b" />
-              <Text style={styles.expiryText}>
+              <Feather name="calendar" size={14} color={colors.secondaryText} />
+              <Text style={[styles.expiryText, { color: colors.secondaryText }] }>
                 Expires: {format(new Date(document.expirationDate), 'MMM d, yyyy')}
               </Text>
             </View>

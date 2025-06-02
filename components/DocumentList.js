@@ -7,6 +7,18 @@ import { useThemeMode } from '../contexts/ThemeContext';
 export default function DocumentList({ searchQuery, categoryFilter }) {
   const { documents, loading } = useDocuments();
   const { colorScheme } = useThemeMode();
+  const isDarkMode = colorScheme === 'dark';
+
+  // Theme-aware colors
+  const colors = {
+    cardBackground: isDarkMode ? '#24273a' : '#ffffff',
+    primaryText: isDarkMode ? '#e0def4' : '#1e293b',
+    secondaryText: isDarkMode ? '#908caa' : '#64748b',
+    accent: isDarkMode ? '#8aadf4' : '#3b82f6',
+    border: isDarkMode ? 'rgba(99,102,241,0.18)' : 'rgba(255,255,255,0.3)',
+    icon: isDarkMode ? '#8aadf4' : '#3b82f6',
+    emptyText: isDarkMode ? '#908caa' : '#64748b',
+  };
 
   const filteredDocuments = documents.filter(doc => {
     // If categoryFilter is set, only show docs in that category
@@ -24,22 +36,22 @@ export default function DocumentList({ searchQuery, categoryFilter }) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#6366f1" />
-        <Text style={styles.loadingText}>Loading your documents...</Text>
+        <ActivityIndicator size="large" color={colors.accent} />
+        <Text style={[styles.loadingText, { color: colors.secondaryText }]}>Loading your documents...</Text>
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: colorScheme === 'dark' ? '#181926' : 'transparent' }}>
+    <View style={{ flex: 1, backgroundColor: isDarkMode ? '#181926' : 'transparent' }}>
       <FlatList
         data={filteredDocuments}
-        renderItem={({ item }) => <DocumentCard document={item} />}
+        renderItem={({ item }) => <DocumentCard document={item} colors={colors} />}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContainer}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>
+            <Text style={[styles.emptyStateText, { color: colors.emptyText }]}>
               {searchQuery ? 'No documents match your search' : 'No documents yet. Add your first document!'}
             </Text>
           </View>
