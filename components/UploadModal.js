@@ -29,6 +29,7 @@ export default function UploadModal({ visible, onClose, onSubmit, editDocument }
   const [category, setCategory] = useState(TAGS[0]); // Default to first category
   const [isLoading, setIsLoading] = useState(false);
   const [dateWarning, setDateWarning] = useState(false);
+  const [noExpiration, setNoExpiration] = useState(false);
 
   // If editDocument is provided, prefill the form
   useEffect(() => {
@@ -37,6 +38,7 @@ export default function UploadModal({ visible, onClose, onSubmit, editDocument }
       setTitle(editDocument.title || '');
       setDate(editDocument.expirationDate ? new Date(editDocument.expirationDate) : new Date());
       setCategory(editDocument.category || TAGS[0]);
+      setNoExpiration(false);
     } else if (visible && !editDocument) {
       resetForm();
     }
@@ -86,7 +88,7 @@ export default function UploadModal({ visible, onClose, onSubmit, editDocument }
         id: editDocument ? editDocument.id : Date.now().toString(),
         title: title.trim(),
         file,
-        expirationDate: date.toISOString(),
+        expirationDate: noExpiration ? null : date.toISOString(),
         category: category || TAGS[0],
         createdAt: editDocument ? editDocument.createdAt : new Date().toISOString(),
         size: file.size,
@@ -109,6 +111,17 @@ export default function UploadModal({ visible, onClose, onSubmit, editDocument }
     setTitle('');
     setDate(new Date());
     setCategory(TAGS[0]);
+    setNoExpiration(false);
+  };
+
+  const handleNoExpirationToggle = () => {
+    if (!noExpiration) {
+      // Set date 5 years from now
+      const d = new Date();
+      d.setFullYear(d.getFullYear() + 5);
+      setDate(d);
+    }
+    setNoExpiration(!noExpiration);
   };
 
   const handleDatePress = () => {
@@ -159,7 +172,6 @@ export default function UploadModal({ visible, onClose, onSubmit, editDocument }
             style={styles.background} 
             onPress={handleModalClose} 
           />
-          
           <View style={styles.modalContainer}>
             <View style={styles.header}>
               <Text style={styles.title}>{editDocument ? 'Edit Document' : 'Upload Document'}</Text>
@@ -167,7 +179,6 @@ export default function UploadModal({ visible, onClose, onSubmit, editDocument }
                 <Feather name="x" size={24} color="#fff" />
               </TouchableOpacity>
             </View>
-            
             <ScrollView 
               contentContainerStyle={styles.content}
               keyboardShouldPersistTaps="handled"
@@ -221,20 +232,26 @@ export default function UploadModal({ visible, onClose, onSubmit, editDocument }
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Expiration Date</Text>
                 <TouchableOpacity 
-                  style={[styles.dateInput, dateWarning && { borderColor: '#ef4444', backgroundColor: '#fee2e2' }]}
-                  onPress={handleDatePress}
-                  activeOpacity={0.7}
+                  style={[styles.dateInput, dateWarning && { borderColor: '#ef4444', backgroundColor: '#fee2e2' }, noExpiration && { opacity: 0.5 }]}
+                  onPress={noExpiration ? undefined : handleDatePress}
+                  activeOpacity={noExpiration ? 1 : 0.7}
+                  disabled={noExpiration}
                 >
                   <Text style={[styles.dateText, dateWarning && { color: '#ef4444' }] }>
-                    {date.toLocaleDateString('en-US', { 
-                      year: 'numeric', 
-                      month: 'long', 
-                      day: 'numeric' 
-                    })}
+                    {noExpiration ? 'No Expiration (5 years from now)' : date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
                   </Text>
                   <Feather name="calendar" size={18} color={dateWarning ? '#ef4444' : '#6366f1'} />
                 </TouchableOpacity>
-                {showDatePicker && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+                  <TouchableOpacity
+                    onPress={handleNoExpirationToggle}
+                    style={{ flexDirection: 'row', alignItems: 'center' }}
+                  >
+                    <Feather name={noExpiration ? 'check-square' : 'square'} size={20} color={noExpiration ? '#6366f1' : '#64748b'} />
+                    <Text style={{ marginLeft: 8, color: '#64748b', fontSize: 15 }}>No Expiration date</Text>
+                  </TouchableOpacity>
+                </View>
+                {showDatePicker && !noExpiration && (
                   <View style={styles.datePickerContainer}>
                     {Platform.OS === 'ios' && (
                       <View style={styles.iosDatePickerHeader}>
