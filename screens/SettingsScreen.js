@@ -16,12 +16,12 @@ import { Feather, Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useThemeMode } from '../contexts/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNotificationSettings } from '../contexts/NotificationSettingsContext';
 import SplashScreenComponent from '../components/SplashScreen';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { useDocuments } from '../contexts/DocumentsContext';
+import * as Notifications from 'expo-notifications';
 
 const themeOptions = [
   { label: 'Pop', value: 'pop', icon: 'zap' },
@@ -244,6 +244,54 @@ export default function SettingsScreen() {
   const safeBg = isPop ? theme.faded : theme.background;
   const statusBarStyle = getStatusBarStyle(safeBg);
 
+  // Helper function to set notification time
+  function setUserNotificationTime(hour, minute) {
+    setTempNotificationTime(new Date(0, 0, 0, hour, minute));
+    setNotificationTime({ hour, minute });
+    setShowTimePicker(false);
+    if (notificationEnabled) {
+      scheduleNextNotification(hour, minute);
+    }
+  }
+
+  // Helper: schedule or update the next notification
+  async function scheduleNextNotification(hour, minute) {
+    // Remove all previous scheduled notifications
+    await Notifications.cancelAllScheduledNotificationsAsync();
+    // Find the next document to expire
+    const now = new Date();
+    const upcomingDocs = documents
+      .filter(doc => doc.expirationDate)
+      .map(doc => ({ ...doc, expirationDate: new Date(doc.expirationDate) }))
+      .filter(doc => doc.expirationDate > now)
+      .sort((a, b) => a.expirationDate - b.expirationDate);
+    if (upcomingDocs.length === 0) return;
+    const nextDoc = upcomingDocs[0];
+    // Schedule notification for the selected time on the day of expiration minus remindBefore
+    const notifyDate = new Date(nextDoc.expirationDate);
+    notifyDate.setDate(notifyDate.getDate() - remindBefore);
+    notifyDate.setHours(hour, minute, 0, 0);
+    if (notifyDate > now) {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: `Document Expiry: ${nextDoc.title}`,
+          body: `Your document \"${nextDoc.title}\" is expiring soon!`,
+          sound: true,
+        },
+        trigger: { type: 'date', date: notifyDate }, // Use correct trigger format
+      });
+    }
+  }
+
+  // Call this whenever notification time or remindBefore changes
+  React.useEffect(() => {
+    if (notificationEnabled) {
+      scheduleNextNotification(tempNotificationTime.getHours(), tempNotificationTime.getMinutes());
+    } else {
+      Notifications.cancelAllScheduledNotificationsAsync();
+    }
+  }, [notificationEnabled, tempNotificationTime, remindBefore, documents]);
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: safeBg }} edges={['top', 'left', 'right']}>
       <StatusBar backgroundColor={safeBg} barStyle={statusBarStyle} translucent={false} hidden={false} />
@@ -326,8 +374,17 @@ export default function SettingsScreen() {
             value={tempNotificationTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             onPress={notificationEnabled ? () => setShowTimePicker(true) : undefined}
           >
-            {/* Lower opacity if notifications are off */}
-            <View style={!notificationEnabled ? { opacity: 0.4 } : null} pointerEvents={notificationEnabled ? 'auto' : 'none'} />
+            <TouchableOpacity
+              onPress={notificationEnabled ? () => setShowTimePicker(true) : undefined}
+              activeOpacity={notificationEnabled ? 0.7 : 1}
+              style={{ flexDirection: 'row', alignItems: 'center', opacity: notificationEnabled ? 1 : 0.4 }}
+              disabled={!notificationEnabled}
+            >
+              <Feather name="clock" size={18} color={notificationEnabled ? '#6366f1' : '#bfc6e6'} style={{ marginRight: 6 }} />
+              <Text style={{ fontSize: 16, color: notificationEnabled ? (colorScheme === 'dark' ? '#8aadf4' : '#6366f1') : '#bfc6e6', fontWeight: '500' }}>
+                {tempNotificationTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </Text>
+            </TouchableOpacity>
           </SettingsItem>
           <SettingsItem
             icon="calendar"
@@ -341,20 +398,71 @@ export default function SettingsScreen() {
           </SettingsItem>
         </View>
         {showTimePicker && (
-          <DateTimePicker
-            value={tempNotificationTime}
-            mode="time"
-            is24Hour={true}
-            display="spinner"
-            onChange={(event, selectedDate) => {
-              setShowTimePicker(false);
-              if (selectedDate) {
-                setTempNotificationTime(selectedDate);
-                setNotificationTime({ hour: selectedDate.getHours(), minute: selectedDate.getMinutes() });
-              }
-            }}
-            style={styles.timePicker}
-          />
+          <View style={{ marginHorizontal: 16, marginTop: 8, marginBottom: 16, backgroundColor: colorScheme === 'dark' ? '#232946' : '#fff', borderRadius: 12, padding: 16, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 }}>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: colorScheme === 'dark' ? '#8aadf4' : '#334155', marginBottom: 12 }}>Set Notification Time</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 16 }}>
+              <TouchableOpacity
+                onPress={() => {
+                  let hour = tempNotificationTime.getHours() - 1;
+                  if (hour < 0) hour = 23;
+                  setTempNotificationTime(new Date(0, 0, 0, hour, tempNotificationTime.getMinutes()));
+                }}
+                style={{ padding: 8 }}
+              >
+                <Text style={{ fontSize: 28, color: colorScheme === 'dark' ? '#8aadf4' : '#6366f1', fontWeight: 'bold' }}>-</Text>
+              </TouchableOpacity>
+              <Text style={{ fontSize: 32, fontWeight: '700', width: 50, textAlign: 'center', color: colorScheme === 'dark' ? '#fff' : '#232946' }}>{tempNotificationTime.getHours().toString().padStart(2, '0')}</Text>
+              <Text style={{ fontSize: 32, fontWeight: '700', color: colorScheme === 'dark' ? '#fff' : '#232946' }}>:</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  let minute = tempNotificationTime.getMinutes() - 1;
+                  if (minute < 0) minute = 59;
+                  setTempNotificationTime(new Date(0, 0, 0, tempNotificationTime.getHours(), minute));
+                }}
+                style={{ padding: 8 }}
+              >
+                <Text style={{ fontSize: 28, color: colorScheme === 'dark' ? '#8aadf4' : '#6366f1', fontWeight: 'bold' }}>-</Text>
+              </TouchableOpacity>
+              <Text style={{ fontSize: 32, fontWeight: '700', width: 50, textAlign: 'center', color: colorScheme === 'dark' ? '#fff' : '#232946' }}>{tempNotificationTime.getMinutes().toString().padStart(2, '0')}</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  let minute = tempNotificationTime.getMinutes() + 1;
+                  if (minute > 59) minute = 0;
+                  setTempNotificationTime(new Date(0, 0, 0, tempNotificationTime.getHours(), minute));
+                }}
+                style={{ padding: 8 }}
+              >
+                <Text style={{ fontSize: 28, color: colorScheme === 'dark' ? '#8aadf4' : '#6366f1', fontWeight: 'bold' }}>+</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  let hour = tempNotificationTime.getHours() + 1;
+                  if (hour > 23) hour = 0;
+                  setTempNotificationTime(new Date(0, 0, 0, hour, tempNotificationTime.getMinutes()));
+                }}
+                style={{ padding: 8 }}
+              >
+                <Text style={{ fontSize: 28, color: colorScheme === 'dark' ? '#8aadf4' : '#6366f1', fontWeight: 'bold' }}>+</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12 }}>
+              <TouchableOpacity
+                onPress={() => setShowTimePicker(false)}
+                style={{ paddingVertical: 8, paddingHorizontal: 18, borderRadius: 8, backgroundColor: '#e2e8f0', marginRight: 10 }}
+              >
+                <Text style={{ color: '#334155', fontWeight: '600', fontSize: 16 }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowTimePicker(false);
+                  setNotificationTime({ hour: tempNotificationTime.getHours(), minute: tempNotificationTime.getMinutes() });
+                }}
+                style={{ paddingVertical: 8, paddingHorizontal: 18, borderRadius: 8, backgroundColor: '#6366f1' }}
+              >
+                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>Set</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         )}
         <Text style={[styles.sectionTitle, colorScheme === 'dark' && { color: '#8aadf4' }]}>About</Text>
         <View style={[styles.settingCard, colorScheme === 'dark' && { backgroundColor: '#232946', shadowColor: '#000' }]}> 

@@ -17,8 +17,9 @@ import { useThemeMode } from "../contexts/ThemeContext";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDocuments } from "../contexts/DocumentsContext";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { useNavigation } from '@react-navigation/native';
 
-const NotificationItem = ({ item, index, onAction, onTimeChange }) => {
+const NotificationItem = ({ item, index, onAction, onTimeChange, isPop }) => {
   const { colorScheme, theme } = useThemeMode();
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -29,6 +30,7 @@ const NotificationItem = ({ item, index, onAction, onTimeChange }) => {
   const [selectedTime, setSelectedTime] = useState(
     item.trigger?.value ? new Date(item.trigger.value) : new Date()
   );
+  const navigation = useNavigation();
 
   // Set default time to 9:00 AM if not set
   React.useEffect(() => {
@@ -242,7 +244,10 @@ const NotificationItem = ({ item, index, onAction, onTimeChange }) => {
         <TouchableOpacity
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
-          onPress={toggleExpand}
+          onPress={() => {
+            toggleExpand();
+            navigation.navigate('Notifications');
+          }}
           activeOpacity={0.8}
         >
           <View style={styles.notificationHeader}>
@@ -403,20 +408,56 @@ export default function NotificationsScreen({ navigation }) {
   });
 
   const fetchNotifications = async () => {
-    // Get all scheduled notifications
-    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-    // Only show notifications for documents that still exist
-    const docTitles = documents.map((doc) => doc.title);
-    const mapped = scheduled
-      .filter((n) => docTitles.includes(n.content.title))
-      .map((n, idx) => ({
-        id: n.identifier || idx.toString(),
-        title: n.content.title || "Notification",
-        message: n.content.body || "",
-        trigger: n.trigger,
-        read: false,
-      }));
-    setNotifications(mapped);
+    try {
+      // Get all scheduled notifications
+      const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+      // Get delivered notifications (currently showing)
+      let delivered = [];
+      try {
+        delivered = await Notifications.getPresentedNotificationsAsync();
+      } catch (e) {
+        console.log("Error getting delivered notifications:", e);
+        delivered = [];
+      }
+      // Get past notification history (requires permissions)
+      let history = [];
+      // Expo Notifications API does not have getDeliveredNotificationsAsync on all platforms/versions
+      // so we skip this if not available
+      if (typeof Notifications.getDeliveredNotificationsAsync === 'function') {
+        try {
+          const { status } = await Notifications.getPermissionsAsync();
+          if (status === 'granted') {
+            history = await Notifications.getDeliveredNotificationsAsync();
+          }
+        } catch (e) {
+          console.log("Error getting notification history:", e);
+          history = [];
+        }
+      }
+      // Combine all notifications
+      const allNotifs = [...scheduled, ...delivered, ...history];
+      // Deduplicate by identifier and sort by date (newest first)
+      const seenIds = new Set();
+      const mapped = allNotifs
+        .filter((n) => {
+          if (seenIds.has(n.identifier)) return false;
+          seenIds.add(n.identifier);
+          return true;
+        })
+        .map((n, idx) => ({
+          id: n.identifier || idx.toString(),
+          title: n.content?.title || "Notification",
+          message: n.content?.body || "",
+          trigger: n.trigger,
+          date: n.date || (n.trigger?.value ? new Date(n.trigger.value) : new Date()),
+          read: false,
+        }))
+        .sort((a, b) => b.date - a.date); // Sort by date, newest first
+      setNotifications(mapped);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      setNotifications([]);
+    }
   };
 
   const onRefresh = async () => {
@@ -435,6 +476,10 @@ export default function NotificationsScreen({ navigation }) {
     } else if (action === "delete") {
       // Cancel the scheduled notification so it does not show up again
       await Notifications.cancelScheduledNotificationAsync(id);
+      // Also remove delivered notification if present
+      try {
+        await Notifications.dismissNotificationAsync(id);
+      } catch (e) {}
       setNotifications((prev) => prev.filter((n) => n.id !== id));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } else if (action === "remind") {
@@ -453,7 +498,7 @@ export default function NotificationsScreen({ navigation }) {
             body: notif.message,
             sound: true,
           },
-          trigger: nextDay,
+          trigger: { type: 'date', date: nextDay }, // Use correct trigger format
         });
       }
     }
@@ -478,7 +523,7 @@ export default function NotificationsScreen({ navigation }) {
           body: notif.message,
           sound: true,
         },
-        trigger: scheduledDate,
+        trigger: { type: 'date', date: scheduledDate }, // Use correct trigger format
       });
       // Update state to reflect new notification id and time
       setNotifications((prev) =>
@@ -494,6 +539,14 @@ export default function NotificationsScreen({ navigation }) {
   useEffect(() => {
     fetchNotifications();
   }, []);
+
+  // Listen for notification responses
+  React.useEffect(() => {
+    const subscription = Notifications.addNotificationResponseReceivedListener(response => {
+      navigation.navigate('Notifications');
+    });
+    return () => subscription.remove();
+  }, [navigation]);
 
   const safeBg = isPop ? theme.faded : theme.background;
   const statusBarStyle = getStatusBarStyle(safeBg);
@@ -545,6 +598,7 @@ export default function NotificationsScreen({ navigation }) {
             index={index}
             onAction={handleNotificationAction}
             onTimeChange={handleTimeChange}
+            isPop={isPop}
           />
         )}
         contentContainerStyle={styles.listContent}
