@@ -6,13 +6,15 @@ import { DocumentsProvider } from './contexts/DocumentsContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import * as Notifications from 'expo-notifications';
 import { NotificationSettingsProvider } from './contexts/NotificationSettingsContext';
+import * as SplashScreen from 'expo-splash-screen';
 
 export default function App() {
   useEffect(() => {
+    SplashScreen.preventAutoHideAsync();
     (async () => {
       const { status } = await Notifications.requestPermissionsAsync();
       if (status !== 'granted') {
-        alert('Enable notifications to get document expiry reminders!');
+        alert('Enable notifications to get Arkive expiry reminders!');
       }
       Notifications.setNotificationHandler({
         handleNotification: async () => ({
@@ -21,6 +23,10 @@ export default function App() {
           shouldSetBadge: false,
         }),
       });
+      // Hide splash after app is ready
+      setTimeout(() => {
+        SplashScreen.hideAsync();
+      }, 1200); // Show splash for at least 1.2s for a smooth effect
     })();
   }, []);
 
@@ -43,7 +49,7 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc', // Match your screen background
+    backgroundColor: '#f8fafc', // Match Arkive's screen background
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 70, // Add padding for both Android and iOS
   },
 });

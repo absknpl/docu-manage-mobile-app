@@ -9,7 +9,8 @@ import {
   Animated,
   Easing,
   Platform,
-  ScrollView // Added ScrollView import
+  ScrollView,
+  StatusBar
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -17,6 +18,7 @@ import { useThemeMode } from '../contexts/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNotificationSettings } from '../contexts/NotificationSettingsContext';
+import SplashScreenComponent from '../components/SplashScreen';
 
 const themeOptions = [
   { label: 'Pop', value: 'pop', icon: 'zap' },
@@ -148,16 +150,17 @@ const RemindMeBeforeSelector = ({ value, onChange, options, onConfirm, onCancel,
 };
 
 export default function SettingsScreen() {
-  const [notifications, setNotifications] = useState(true);
   const [appVersion] = useState('1.0.0');
   const { themeMode, setThemeMode, colorScheme, theme } = useThemeMode();
-  const { notificationTime, setNotificationTime, remindBefore, setRemindBefore } = useNotificationSettings();
+  const { notificationEnabled, setNotificationEnabled, notificationTime, setNotificationTime, remindBefore, setRemindBefore } = useNotificationSettings();
   const isPop = colorScheme === 'pop';
   const [headerScale] = useState(new Animated.Value(1));
   const [tempNotificationTime, setTempNotificationTime] = useState(new Date(0,0,0,notificationTime.hour, notificationTime.minute));
   const [tempRemindBefore, setTempRemindBefore] = useState(remindBefore);
   const [showRemindConfirm, setShowRemindConfirm] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [showSplash, setShowSplash] = useState(false);
+  const [versionTapCount, setVersionTapCount] = useState(0);
 
   const handleSupport = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -176,7 +179,7 @@ export default function SettingsScreen() {
 
   const toggleNotifications = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setNotifications(prev => !prev);
+    setNotificationEnabled && setNotificationEnabled(prev => !prev);
   };
 
   const animateHeader = () => {
@@ -196,17 +199,41 @@ export default function SettingsScreen() {
     ]).start();
   };
 
+  // Version tap handler
+  const handleVersionPress = () => {
+    setVersionTapCount(count => {
+      if (count + 1 >= 3) {
+        setShowSplash(true);
+        setTimeout(() => setShowSplash(false), 1800); // Show splash for 1.8s
+        return 0;
+      }
+      return count + 1;
+    });
+  };
+
   React.useEffect(() => {
     animateHeader();
   }, []);
 
+  // Dynamic background colors
+  const safeBg = isPop ? theme.faded : colorScheme === 'dark' ? '#0f172a' : '#f8fafc';
+  const statusBarBg = isPop ? theme.primary : colorScheme === 'dark' ? '#0f172a' : '#f8fafc';
+  const statusBarStyle = isPop ? 'light-content' : 'dark-content';
+
   return (
-    <SafeAreaView style={[
-      styles.container,
-      colorScheme === 'pop'
-        ? { backgroundColor: theme.faded }
-        : colorScheme === 'dark' && { backgroundColor: '#0f172a' }
-    ]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: safeBg }}>
+      <StatusBar backgroundColor={statusBarBg} barStyle={statusBarStyle} />
+      {showSplash && (
+        <View style={{
+          ...StyleSheet.absoluteFillObject,
+          zIndex: 9999,
+          backgroundColor: colorScheme === 'dark' ? '#0f172a' : '#fff',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}>
+          <SplashScreenComponent forceShow onClose={() => setShowSplash(false)} />
+        </View>
+      )}
       <Animated.View style={[styles.header, colorScheme === 'dark' && { backgroundColor: '#181926' }, { transform: [{ scale: headerScale }] }]}> 
         <Text style={[styles.headerTitle, colorScheme === 'dark' && { color: '#8aadf4' }]}>
           Settings
@@ -215,6 +242,7 @@ export default function SettingsScreen() {
       <ScrollView 
         contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
+        style={{ backgroundColor: safeBg }}
       >
         {/* Appearance Section at the Top */}
         <Text style={[styles.sectionTitle, colorScheme === 'dark' && { color: '#8aadf4' }]}>Appearance</Text>
@@ -257,7 +285,7 @@ export default function SettingsScreen() {
             onPress={toggleNotifications}
           >
             <Switch
-              value={notifications}
+              value={notificationEnabled}
               onValueChange={toggleNotifications}
               trackColor={{ false: '#e2e8f0', true: '#6366f1' }}
               thumbColor="#fff"
@@ -268,20 +296,20 @@ export default function SettingsScreen() {
             icon="clock" 
             label="Notification Time" 
             value={tempNotificationTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            onPress={notifications ? () => setShowTimePicker(true) : undefined}
+            onPress={notificationEnabled ? () => setShowTimePicker(true) : undefined}
           >
             {/* Lower opacity if notifications are off */}
-            <View style={!notifications ? { opacity: 0.4 } : null} pointerEvents={notifications ? 'auto' : 'none'} />
+            <View style={!notificationEnabled ? { opacity: 0.4 } : null} pointerEvents={notificationEnabled ? 'auto' : 'none'} />
           </SettingsItem>
           <SettingsItem
             icon="calendar"
             label="Remind Me Before"
             value={REMIND_OPTIONS.find(opt => opt.value === tempRemindBefore)?.label}
-            onPress={notifications ? () => setShowRemindConfirm(true) : undefined}
+            onPress={notificationEnabled ? () => setShowRemindConfirm(true) : undefined}
             isLast={true}
           >
             {/* Lower opacity if notifications are off */}
-            <View style={!notifications ? { opacity: 0.4 } : null} pointerEvents={notifications ? 'auto' : 'none'} />
+            <View style={!notificationEnabled ? { opacity: 0.4 } : null} pointerEvents={notificationEnabled ? 'auto' : 'none'} />
           </SettingsItem>
         </View>
         {showTimePicker && (
@@ -306,6 +334,7 @@ export default function SettingsScreen() {
             icon="info" 
             label="Version" 
             value={appVersion}
+            onPress={handleVersionPress}
           />
           
           <SettingsItem 

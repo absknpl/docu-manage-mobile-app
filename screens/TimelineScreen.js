@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { View, StyleSheet, Animated, ScrollView, Text, TouchableOpacity, Platform, FlatList } from 'react-native';
+import { View, StyleSheet, Animated, ScrollView, Text, TouchableOpacity, Platform, FlatList, StatusBar } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import TimelineView from '../components/TimelineView';
@@ -31,8 +31,13 @@ export default function TimelineScreen() {
 
   const filterOptions = ['all', 'today', 'week', 'month', 'year'];
 
+  const safeBg = isPop ? theme.faded : colorScheme === 'dark' ? '#0f172a' : '#f8fafc';
+  const statusBarBg = isPop ? theme.primary : colorScheme === 'dark' ? '#0f172a' : '#f8fafc';
+  const statusBarStyle = isPop ? 'light-content' : 'dark-content';
+
   return (
-    <SafeAreaView style={[styles.container, isPop ? { backgroundColor: theme.faded } : colorScheme === 'dark' && { backgroundColor: '#0f172a' }]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: safeBg }}>
+      <StatusBar backgroundColor={statusBarBg} barStyle={statusBarStyle} />
       <View style={[
         styles.mainHeader,
         isPop ? { backgroundColor: theme.primary } : colorScheme === 'dark' && { backgroundColor: '#1e293b' }
@@ -47,7 +52,7 @@ export default function TimelineScreen() {
           styles.mainHeaderSubtitle,
           isPop ? { color: theme.textOnPrimary, opacity: 0.9 } : colorScheme === 'dark' && { color: '#94a3b8' }
         ]}>
-          Expiration Projection dates and reminders
+          Upcoming Expiration dates.
         </Text>
       </View>
 
@@ -94,7 +99,7 @@ export default function TimelineScreen() {
       </View>
 
       <Animated.ScrollView
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={[styles.contentContainer, { backgroundColor: safeBg }]}
         scrollEventThrottle={16}
         onScroll={handleScroll}
         showsVerticalScrollIndicator={false}

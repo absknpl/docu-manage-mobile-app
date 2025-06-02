@@ -5,7 +5,8 @@ import {
   Animated, 
   TouchableOpacity, 
   Text,
-  Platform
+  Platform,
+  StatusBar
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -122,13 +123,13 @@ export default function DocumentsScreen() {
     </>
   );
 
+  const safeBg = isPop ? theme.faded : colorScheme === 'dark' ? '#0f172a' : '#f8fafc';
+  const statusBarBg = isPop ? theme.primary : colorScheme === 'dark' ? '#0f172a' : '#f8fafc';
+  const statusBarStyle = isPop ? 'light-content' : 'dark-content';
+
   return (
-    <SafeAreaView style={[
-      styles.container,
-      isPop
-        ? { backgroundColor: theme.faded }
-        : colorScheme === 'dark' && { backgroundColor: '#0f172a' }
-    ]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: safeBg }}>
+      <StatusBar backgroundColor={statusBarBg} barStyle={statusBarStyle} />
       {/* Main Header */}
       <View style={[
         styles.mainHeader,

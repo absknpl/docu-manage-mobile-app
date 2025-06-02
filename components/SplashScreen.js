@@ -8,14 +8,18 @@ import {
   Platform,
   Animated,
   Easing,
-  Dimensions
+  Dimensions,
+  SafeAreaView,
+  Image,
+  StatusBar
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
+import { useThemeMode } from '../contexts/ThemeContext';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 const FEATURES = [
   { icon: 'lock', text: 'Bank-grade encryption for all documents' },
   { icon: 'bell', text: 'Smart expiry reminders & notifications' },
@@ -24,22 +28,40 @@ const FEATURES = [
   { icon: 'bar-chart-2', text: 'Visual analytics & document timelines' },
 ];
 
-export default function SplashScreen({ navigation }) {
+export default function SplashScreen({ navigation, forceShow }) {
   const [buttonScale] = useState(new Animated.Value(1));
   const fadeAnim = useState(new Animated.Value(0))[0];
   const slideUpAnim = useState(new Animated.Value(30))[0];
   const [isFirstLaunch, setIsFirstLaunch] = useState(null);
+  const { colorScheme, theme } = useThemeMode();
+  const isPop = colorScheme === 'pop';
 
   useEffect(() => {
     const checkFirstLaunch = async () => {
       try {
+        if (forceShow) {
+          setIsFirstLaunch(true);
+          Animated.parallel([
+            Animated.timing(fadeAnim, {
+              toValue: 1,
+              duration: 800,
+              useNativeDriver: true,
+            }),
+            Animated.timing(slideUpAnim, {
+              toValue: 0,
+              duration: 1000,
+              easing: Easing.out(Easing.back(1)),
+              useNativeDriver: true,
+            })
+          ]).start();
+          return;
+        }
+        // Always check AsyncStorage for first launch on every mount
         const hasLaunched = await AsyncStorage.getItem('@hasLaunched');
         if (hasLaunched === null) {
-          // First launch - show welcome screen
+          // First launch on any OS: show splash
           setIsFirstLaunch(true);
           await AsyncStorage.setItem('@hasLaunched', 'true');
-          
-          // Start animations
           Animated.parallel([
             Animated.timing(fadeAnim, {
               toValue: 1,
@@ -54,8 +76,10 @@ export default function SplashScreen({ navigation }) {
             })
           ]).start();
         } else {
-          // Not first launch - skip to main app
-          navigation.replace('Main');
+          // Not first launch: skip splash
+          if (navigation && typeof navigation.replace === 'function') {
+            navigation.replace('Main');
+          }
         }
       } catch (error) {
         console.error('Error checking first launch:', error);
@@ -64,7 +88,7 @@ export default function SplashScreen({ navigation }) {
     };
 
     checkFirstLaunch();
-  }, []);
+  }, [navigation, forceShow]);
 
   const handleLetsGo = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -81,7 +105,9 @@ export default function SplashScreen({ navigation }) {
         useNativeDriver: true,
       })
     ]).start(() => {
-      navigation.replace('Main');
+      if (navigation && typeof navigation.replace === 'function') {
+        navigation.replace('Main');
+      }
     });
   };
 
@@ -102,65 +128,70 @@ export default function SplashScreen({ navigation }) {
     return null; // Will be quickly replaced by navigation
   }
 
+  // Determine background color for SafeAreaView and StatusBar
+  const safeBg = isPop ? theme.faded : colorScheme === 'dark' ? '#0f172a' : '#f8fafc';
+  const statusBarBg = isPop ? theme.primary : colorScheme === 'dark' ? '#0f172a' : '#f8fafc';
+  const statusBarStyle = isPop ? 'light' : colorScheme === 'dark' ? 'light' : 'dark';
+
   return (
-    <LinearGradient
-      colors={['#f8fafc', '#f1f5f9']}
-      style={styles.container}
-    >
-      <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideUpAnim }] }]}>
-        <View style={styles.logoContainer}>
-          <LinearGradient
-            colors={['#3b82f6', '#2563eb']}
-            style={styles.logo}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <Feather name="box" size={48} color="white" />
-          </LinearGradient>
-        </View>
-        
-        <Text style={styles.title}>Welcome to Arkive</Text>
-        <Text style={styles.subtitle}>Your personal document fortress</Text>
-        
-        <View style={styles.featuresBox}>
-          <Text style={styles.featuresTitle}>Key Features</Text>
-          <FlatList
-            data={FEATURES}
-            keyExtractor={(item) => item.text}
-            renderItem={renderFeatureItem}
-            scrollEnabled={false}
-          />
-        </View>
-        
-        <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
-          <TouchableOpacity 
-            style={styles.button} 
-            onPress={handleLetsGo} 
-            activeOpacity={0.8}
-          >
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: safeBg }]}> 
+      <StatusBar backgroundColor={statusBarBg} style={statusBarStyle} translucent={false} />
+      <LinearGradient
+        colors={isPop ? [theme.primary, theme.faded] : colorScheme === 'dark' ? ['#0f172a', '#1e293b'] : ['#f8fafc', '#f1f5f9']}
+        style={styles.container}
+      >
+        <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideUpAnim }] }]}> 
+          <View style={styles.logoContainer}>
             <LinearGradient
               colors={['#3b82f6', '#2563eb']}
-              style={styles.buttonGradient}
+              style={styles.logo}
               start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
+              end={{ x: 1, y: 1 }}
             >
-              <Text style={styles.buttonText}>Get Started</Text>
-              <Feather name="arrow-right" size={24} color="white" style={styles.buttonIcon} />
+              <Feather name="box" size={48} color="white" />
             </LinearGradient>
-          </TouchableOpacity>
+          </View>
+          <Text style={styles.title}>Welcome to Arkive</Text>
+          <Text style={styles.subtitle}>Your personal document fortress</Text>
+          
+          <Animated.View style={{ transform: [{ scale: buttonScale }], marginTop: -8 }}>
+            <TouchableOpacity 
+              style={[styles.button, { marginTop: 0 }]} 
+              onPress={handleLetsGo} 
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={['#3b82f6', '#2563eb']}
+                style={styles.buttonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Text style={styles.buttonText}>Get Started</Text>
+                <Feather name="arrow-right" size={24} color="white" style={styles.buttonIcon} />
+              </LinearGradient>
+            </TouchableOpacity>
+          </Animated.View>
         </Animated.View>
-      </Animated.View>
-      
-    </LinearGradient>
+      </LinearGradient>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f8fafc', // will be overridden dynamically
+  },
   container: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 32,
+    width: '100%',
+    height: '100%',
   },
   content: {
     width: '100%',
@@ -175,35 +206,41 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   logo: {
-    width: 80,
-    height: 80,
+    width: width * 0.35,
+    height: width * 0.35,
+    marginBottom: 32,
+    maxWidth: 220,
+    maxHeight: 220,
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
   title: {
-    fontSize: Platform.OS === 'ios' ? 36 : 32,
-    fontWeight: '700',
-    color: '#1e293b',
+    fontSize: 38,
+    fontWeight: 'bold',
+    color: '#6366f1',
+    letterSpacing: 1.2,
     marginBottom: 8,
-    textAlign: 'center',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
-    letterSpacing: -0.5,
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: Platform.OS === 'ios' ? 20 : 18,
+    fontSize: 18,
     color: '#64748b',
-    marginBottom: 32,
+    fontWeight: '500',
     textAlign: 'center',
-    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
-    fontWeight: '400',
+    marginBottom: 32,
+    paddingHorizontal: 8,
   },
   featuresBox: {
+    width: '100%',
+    maxWidth: 600,
     backgroundColor: '#ffffff',
     borderRadius: 20,
     padding: 24,
     marginBottom: 32,
-    width: '100%',
+    width: '94%', // Increased width for better readability
+    alignSelf: 'center', // Center the box
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,

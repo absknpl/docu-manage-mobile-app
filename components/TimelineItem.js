@@ -56,8 +56,11 @@ export default function TimelineItem({ document, isLast, colors, isPop }) {
               ? '#232946' // darker card for dark mode
               : '#f1f5fd' // light blue-gray for light mode
             ),
-        shadowColor: isPop ? theme.popShadow : (isDarkMode ? '#000' : '#64748b'),
-        borderWidth: 0,
+        // Set border color to status color with lower opacity in dark mode
+        borderColor: isDarkMode && !isPop ? `${color}80` : undefined, // 0.5 opacity
+        // Set shadow color to status color in dark mode
+        shadowColor: isDarkMode && !isPop ? color : (isPop ? theme.popShadow : '#64748b'),
+        borderWidth: isDarkMode && !isPop ? 1.5 : 0,
         borderRadius: 16,
         elevation: 4,
         marginBottom: 12,
@@ -86,10 +89,6 @@ export default function TimelineItem({ document, isLast, colors, isPop }) {
         {(status === 'today' || status === 'tomorrow') && (
           <Feather name="alert-triangle" size={16} color={color} style={styles.warningIcon} />
         )}
-        {!isLast && <View style={[
-          styles.line,
-          { backgroundColor: isPop ? theme.accent : (isDarkMode ? '#334155' : '#e2e8f0'), width: 3, left: 5.5 }
-        ]} />}
       </View>
       <View style={styles.content}>
         <View style={styles.dateRow}>
@@ -172,6 +171,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 2,
     marginBottom: 2,
+    marginHorizontal: 12, // Add horizontal margin for side padding
   },
   marker: {
     width: 24,
@@ -183,14 +183,6 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 6,
     zIndex: 2,
-  },
-  line: {
-    position: 'absolute',
-    width: 2,
-    top: 20,
-    bottom: -20,
-    left: 5,
-    zIndex: 1,
   },
   warningIcon: {
     position: 'absolute',
