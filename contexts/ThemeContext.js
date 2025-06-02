@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Appearance, Platform } from 'react-native';
 
+// Create the ThemeContext
 const ThemeContext = createContext();
 
 // Define color palettes for each theme
@@ -16,7 +17,8 @@ const themes = {
     warning: '#facc15',
     success: '#22c55e',
     error: '#ef4444',
-    // ...add more as needed
+    textOnPrimary: '#ffffff',
+    primary: '#6366f1', // Added for header consistency
   },
   dark: {
     background: '#181926',
@@ -29,10 +31,11 @@ const themes = {
     warning: '#facc15',
     success: '#22c55e',
     error: '#ef4444',
-    // ...add more as needed
+    textOnPrimary: '#f4f6fb',
+    primary: '#232946', // Added for header consistency
   },
   pop: {
-    background: 'linear-gradient(135deg, #ffb347 0%, #ff5e62 100%)', // fallback: use #ffb347
+    background: '#fffbe6', // Changed to solid color for StatusBar compatibility (gradients not supported)
     card: '#fff0f6',
     text: '#ff5e62',
     accent: '#ff5e62',
@@ -42,18 +45,28 @@ const themes = {
     warning: '#facc15',
     success: '#22c55e',
     error: '#ef4444',
+    textOnPrimary: '#ffffff',
+    primary: '#ff5e62', // Primary color for headers
     popGradient: ['#ffb347', '#ff5e62', '#f9d423', '#fc6076'],
     popShadow: '#ff5e62',
     popFont: Platform.OS === 'ios' ? 'Chalkboard SE' : 'monospace',
-    // ...add more as needed
   },
 };
 
+// Utility to determine StatusBar barStyle based on background color
+const getStatusBarStyle = (bgColor) => {
+  // Map known background colors to appropriate barStyle
+  const lightBackgrounds = ['#f4f6fb', '#fffbe6', '#e0e7ff', '#ffe0ec', '#fff'];
+  const isLightBackground = lightBackgrounds.includes(bgColor);
+  return isLightBackground ? 'dark-content' : 'light-content';
+};
+
 export function ThemeProvider({ children }) {
-  // 'pop' | 'light' | 'dark'
-  const [themeMode, setThemeMode] = useState('light');
-  const [colorScheme, setColorScheme] = useState('light');
-  const [theme, setTheme] = useState(themes.light);
+  // Initialize with system color scheme or default to 'light'
+  const systemColorScheme = Appearance.getColorScheme() || 'light';
+  const [themeMode, setThemeMode] = useState(systemColorScheme);
+  const [colorScheme, setColorScheme] = useState(systemColorScheme);
+  const [theme, setTheme] = useState(themes[systemColorScheme]);
 
   useEffect(() => {
     if (themeMode === 'pop') {
@@ -69,7 +82,7 @@ export function ThemeProvider({ children }) {
   }, [themeMode]);
 
   return (
-    <ThemeContext.Provider value={{ themeMode, setThemeMode, colorScheme, theme }}>
+    <ThemeContext.Provider value={{ themeMode, setThemeMode, colorScheme, theme, getStatusBarStyle }}>
       {children}
     </ThemeContext.Provider>
   );

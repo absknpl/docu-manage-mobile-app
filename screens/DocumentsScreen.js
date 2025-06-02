@@ -20,7 +20,7 @@ import { useDocuments } from '../contexts/DocumentsContext';
 import { useThemeMode } from '../contexts/ThemeContext';
 
 export default function DocumentsScreen() {
-  const { colorScheme, theme } = useThemeMode();
+  const { colorScheme, theme, getStatusBarStyle } = useThemeMode();
   const isPop = colorScheme === 'pop';
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -123,33 +123,26 @@ export default function DocumentsScreen() {
     </>
   );
 
-  const safeBg = isPop ? theme.faded : colorScheme === 'dark' ? '#0f172a' : '#f8fafc';
-  const statusBarBg = isPop ? theme.primary : colorScheme === 'dark' ? '#0f172a' : '#f8fafc';
-  const statusBarStyle = isPop ? 'light-content' : 'dark-content';
+  const safeBg = colorScheme === 'dark' ? (theme.background || '#0f172a') : (isPop ? theme.faded : theme.background);
+  const statusBarStyle = getStatusBarStyle(safeBg);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: safeBg }}>
-      <StatusBar backgroundColor={statusBarBg} barStyle={statusBarStyle} />
+    <SafeAreaView style={{ flex: 1, backgroundColor: safeBg }} edges={['top', 'left', 'right']}>
+      <StatusBar backgroundColor={safeBg} barStyle={statusBarStyle} translucent={false} hidden={false} />
       {/* Main Header */}
       <View style={[
         styles.mainHeader,
-        isPop 
-          ? { backgroundColor: theme.primary }
-          : colorScheme === 'dark' && { backgroundColor: '#1e293b' }
+        { backgroundColor: isPop ? theme.primary : theme.background },
       ]}>
         <Text style={[
           styles.mainHeaderTitle,
-          isPop 
-            ? { color: theme.textOnPrimary }
-            : colorScheme === 'dark' && { color: '#f8fafc' }
+          { color: isPop ? theme.textOnPrimary : theme.text },
         ]}>
           Documents
         </Text>
         <Text style={[
           styles.mainHeaderSubtitle,
-          isPop 
-            ? { color: theme.textOnPrimary, opacity: 0.9 }
-            : colorScheme === 'dark' && { color: '#94a3b8' }
+          { color: isPop ? theme.textOnPrimary : '#64748b' },
         ]}>
           {documents.length} items
         </Text>
@@ -176,16 +169,12 @@ export default function DocumentsScreen() {
       {/* Scrolling Header (appears on scroll) */}
       <Animated.View style={[
         styles.scrollHeader,
-        isPop 
-          ? { backgroundColor: theme.primary }
-          : colorScheme === 'dark' && { backgroundColor: '#1e293b' },
-        { opacity: headerOpacity }
+        { backgroundColor: isPop ? theme.primary : theme.background },
+        { opacity: headerOpacity },
       ]}>
         <Text style={[
           styles.scrollHeaderTitle,
-          isPop 
-            ? { color: theme.textOnPrimary }
-            : colorScheme === 'dark' && { color: '#f8fafc' }
+          { color: isPop ? theme.textOnPrimary : theme.text },
         ]}>
           Documents
         </Text>
@@ -218,28 +207,20 @@ export default function DocumentsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
   mainHeader: {
-    paddingTop: Platform.OS === 'ios' ? 50 : 30,
-    paddingBottom: 24,
+    paddingVertical: 16,
     paddingHorizontal: 24,
-    backgroundColor: '#f8fafc',
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: 'rgba(0,0,0,0.1)',
   },
   mainHeaderTitle: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#1e293b',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
     marginBottom: 4,
   },
   mainHeaderSubtitle: {
     fontSize: 16,
-    color: '#64748b',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
   },
   scrollHeader: {
@@ -247,10 +228,8 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    paddingTop: Platform.OS === 'ios' ? 50 : 30,
-    paddingBottom: 16,
+    paddingVertical: 12,
     paddingHorizontal: 24,
-    backgroundColor: '#f8fafc',
     zIndex: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: 'rgba(0,0,0,0.1)',
@@ -258,11 +237,11 @@ const styles = StyleSheet.create({
   scrollHeaderTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1e293b',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
   },
   scrollContainer: {
     paddingBottom: 100,
     paddingHorizontal: 16,
   },
+  // ... other styles remain unchanged ...
 });

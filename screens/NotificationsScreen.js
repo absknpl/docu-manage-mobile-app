@@ -390,9 +390,9 @@ const NotificationItem = ({ item, index, onAction, onTimeChange }) => {
 };
 
 export default function NotificationsScreen({ navigation }) {
-  const { colorScheme, theme } = useThemeMode();
-  const { documents } = useDocuments();
+  const { colorScheme, theme, getStatusBarStyle } = useThemeMode();
   const isPop = colorScheme === "pop";
+  const { documents } = useDocuments();
   const [notifications, setNotifications] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -495,35 +495,27 @@ export default function NotificationsScreen({ navigation }) {
     fetchNotifications();
   }, []);
 
-  // Dynamic background colors
-  const safeBg = isPop ? theme.faded : colorScheme === "dark" ? "#0f172a" : "#f8fafc";
-  const statusBarBg = isPop ? theme.primary : colorScheme === "dark" ? "#0f172a" : "#f8fafc";
-  const statusBarStyle = isPop ? "light-content" : "dark-content";
+  const safeBg = isPop ? theme.faded : theme.background;
+  const statusBarStyle = getStatusBarStyle(safeBg);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: safeBg }}>
-      <StatusBar backgroundColor={statusBarBg} barStyle={statusBarStyle} />
+    <SafeAreaView style={{ flex: 1, backgroundColor: safeBg }} edges={['top', 'left', 'right']}>
+      <StatusBar backgroundColor={safeBg} barStyle={statusBarStyle} translucent={false} hidden={false} />
       {/* Main Header */}
-      <View
-        style={[
-          styles.mainHeader,
-          colorScheme === "dark" && styles.mainHeaderDark,
-        ]}
-      >
-        <Text
-          style={[
-            styles.mainHeaderTitle,
-            colorScheme === "dark" && styles.mainHeaderTitleDark,
-          ]}
-        >
+      <View style={[
+        styles.mainHeader,
+        { backgroundColor: theme.background },
+      ]}>
+        <Text style={[
+          styles.mainHeaderTitle,
+          { color: theme.text },
+        ]}>
           Your Notifications
         </Text>
-        <Text
-          style={[
-            styles.mainHeaderSubtitle,
-            colorScheme === "dark" && styles.mainHeaderSubtitleDark,
-          ]}
-        >
+        <Text style={[
+          styles.mainHeaderSubtitle,
+          { color: '#64748b' },
+        ]}>
           {notifications.filter((n) => !n.read).length} unread
         </Text>
       </View>
@@ -532,16 +524,14 @@ export default function NotificationsScreen({ navigation }) {
       <Animated.View
         style={[
           styles.scrollHeader,
-          colorScheme === "dark" && styles.scrollHeaderDark,
+          { backgroundColor: theme.background },
           { opacity: headerOpacity },
         ]}
       >
-        <Text
-          style={[
-            styles.scrollHeaderTitle,
-            colorScheme === "dark" && styles.scrollHeaderTitleDark,
-          ]}
-        >
+        <Text style={[
+          styles.scrollHeaderTitle,
+          { color: theme.text },
+        ]}>
           Notifications
         </Text>
       </Animated.View>
@@ -614,68 +604,44 @@ export default function NotificationsScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f8fafc",
-  },
-  containerDark: {
-    backgroundColor: "#0f172a",
-  },
   mainHeader: {
-    paddingTop: Platform.OS === "ios" ? 50 : 30,
-    paddingBottom: 24,
+    paddingVertical: 16,
     paddingHorizontal: 24,
-    backgroundColor: "#f8fafc",
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(0,0,0,0.1)",
-  },
-  mainHeaderDark: {
-    backgroundColor: "#0f172a",
-    borderBottomColor: "rgba(255,255,255,0.1)",
+    borderBottomColor: 'rgba(0,0,0,0.1)',
   },
   mainHeaderTitle: {
     fontSize: 32,
     fontWeight: "700",
-    color: "#1e293b",
     fontFamily: Platform.OS === "ios" ? "SF Pro Display" : "Roboto",
     marginBottom: 4,
   },
-  mainHeaderTitleDark: {
-    color: "#f8fafc",
-  },
   mainHeaderSubtitle: {
     fontSize: 16,
-    color: "#64748b",
     fontFamily: Platform.OS === "ios" ? "SF Pro Text" : "Roboto",
-  },
-  mainHeaderSubtitleDark: {
-    color: "#94a3b8",
   },
   scrollHeader: {
     position: "absolute",
     top: 0,
     left: 0,
     right: 0,
-    paddingTop: Platform.OS === "ios" ? 50 : 30,
-    paddingBottom: 16,
+    paddingVertical: 12,
     paddingHorizontal: 24,
-    backgroundColor: "#f8fafc",
     zIndex: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(0,0,0,0.1)",
-  },
-  scrollHeaderDark: {
-    backgroundColor: "#0f172a",
-    borderBottomColor: "rgba(255,255,255,0.1)",
+    borderBottomColor: 'rgba(0,0,0,0.1)',
   },
   scrollHeaderTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#1e293b",
     fontFamily: Platform.OS === "ios" ? "SF Pro Display" : "Roboto",
   },
-  scrollHeaderTitleDark: {
-    color: "#f8fafc",
+  container: {
+    flex: 1,
+    backgroundColor: "#f8fafc",
+  },
+  containerDark: {
+    backgroundColor: "#0f172a",
   },
   listContent: {
     paddingBottom: 100,

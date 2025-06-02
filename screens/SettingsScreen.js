@@ -19,6 +19,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNotificationSettings } from '../contexts/NotificationSettingsContext';
 import SplashScreenComponent from '../components/SplashScreen';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
+import { useDocuments } from '../contexts/DocumentsContext';
 
 const themeOptions = [
   { label: 'Pop', value: 'pop', icon: 'zap' },
@@ -151,8 +154,9 @@ const RemindMeBeforeSelector = ({ value, onChange, options, onConfirm, onCancel,
 
 export default function SettingsScreen() {
   const [appVersion] = useState('1.0.0');
-  const { themeMode, setThemeMode, colorScheme, theme } = useThemeMode();
+  const { themeMode, setThemeMode, colorScheme, theme, getStatusBarStyle } = useThemeMode();
   const { notificationEnabled, setNotificationEnabled, notificationTime, setNotificationTime, remindBefore, setRemindBefore } = useNotificationSettings();
+  const { documents } = useDocuments();
   const isPop = colorScheme === 'pop';
   const [headerScale] = useState(new Animated.Value(1));
   const [tempNotificationTime, setTempNotificationTime] = useState(new Date(0,0,0,notificationTime.hour, notificationTime.minute));
@@ -211,31 +215,55 @@ export default function SettingsScreen() {
     });
   };
 
+  // Export documents as CSV (title, expiration date, tag, etc.)
+  const handleExportCSV = async () => {
+    if (!documents || documents.length === 0) {
+      alert('No documents to export.');
+      return;
+    }
+    // Prepare CSV header and rows
+    const header = ['Title', 'Expiration Date', 'Tag'];
+    const rows = documents.map(doc => [
+      `"${doc.title || ''}"`,
+      doc.expirationDate ? new Date(doc.expirationDate).toISOString().split('T')[0] : '',
+      doc.tag || ''
+    ]);
+    const csv = [header, ...rows].map(row => row.join(',')).join('\n');
+    // Write to a temporary file
+    const fileUri = FileSystem.cacheDirectory + `arkive_export_${Date.now()}.csv`;
+    await FileSystem.writeAsStringAsync(fileUri, csv, { encoding: FileSystem.EncodingType.UTF8 });
+    // Share the file
+    await Sharing.shareAsync(fileUri, { mimeType: 'text/csv', dialogTitle: 'Export Documents CSV' });
+  };
+
   React.useEffect(() => {
     animateHeader();
   }, []);
 
   // Dynamic background colors
-  const safeBg = isPop ? theme.faded : colorScheme === 'dark' ? '#0f172a' : '#f8fafc';
-  const statusBarBg = isPop ? theme.primary : colorScheme === 'dark' ? '#0f172a' : '#f8fafc';
-  const statusBarStyle = isPop ? 'light-content' : 'dark-content';
+  const safeBg = isPop ? theme.faded : theme.background;
+  const statusBarStyle = getStatusBarStyle(safeBg);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: safeBg }}>
-      <StatusBar backgroundColor={statusBarBg} barStyle={statusBarStyle} />
+    <SafeAreaView style={{ flex: 1, backgroundColor: safeBg }} edges={['top', 'left', 'right']}>
+      <StatusBar backgroundColor={safeBg} barStyle={statusBarStyle} translucent={false} hidden={false} />
       {showSplash && (
         <View style={{
           ...StyleSheet.absoluteFillObject,
           zIndex: 9999,
-          backgroundColor: colorScheme === 'dark' ? '#0f172a' : '#fff',
+          backgroundColor: theme.background,
           justifyContent: 'center',
           alignItems: 'center',
         }}>
           <SplashScreenComponent forceShow onClose={() => setShowSplash(false)} />
         </View>
       )}
-      <Animated.View style={[styles.header, colorScheme === 'dark' && { backgroundColor: '#181926' }, { transform: [{ scale: headerScale }] }]}> 
-        <Text style={[styles.headerTitle, colorScheme === 'dark' && { color: '#8aadf4' }]}>
+      <Animated.View style={[
+        styles.header,
+        { backgroundColor: theme.background },
+        { transform: [{ scale: headerScale }] },
+      ]}> 
+        <Text style={[styles.headerTitle, { color: theme.accent }]}>
           Settings
         </Text>
       </Animated.View>
@@ -355,6 +383,11 @@ export default function SettingsScreen() {
             onPress={handleRate}
             isLast={true}
           />
+          <SettingsItem 
+            icon="download" 
+            label="Export Data (CSV)" 
+            onPress={handleExportCSV}
+          />
         </View>
         <View style={styles.footer}>
           <Text style={[styles.footerText, colorScheme === 'dark' && { color: '#8aadf4' }]}>Made with <Feather name="heart" size={14} color="#f43f5e" /> by Abhishek</Text>
@@ -378,27 +411,14 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  containerDark: {
-    backgroundColor: '#0f172a',
-  },
-  scrollContainer: {
-    padding: 16,
-    paddingTop: 0,
-  },
   header: {
-    padding: 24,
-    paddingBottom: 16,
+    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#6366f1',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
     letterSpacing: -0.5,
   },

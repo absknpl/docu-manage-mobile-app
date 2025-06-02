@@ -3,10 +3,26 @@ import { View, StyleSheet, StatusBar, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import AppNavigator from './navigation/AppNavigator';
 import { DocumentsProvider } from './contexts/DocumentsContext';
-import { ThemeProvider } from './contexts/ThemeContext';
+import { ThemeProvider, useThemeMode } from './contexts/ThemeContext';
 import * as Notifications from 'expo-notifications';
 import { NotificationSettingsProvider } from './contexts/NotificationSettingsContext';
 import * as SplashScreen from 'expo-splash-screen';
+
+function AppContent() {
+  const { theme } = useThemeMode();
+  return (
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <StatusBar translucent backgroundColor="transparent" />
+      <NavigationContainer>
+        <NotificationSettingsProvider>
+          <DocumentsProvider>
+            <AppNavigator />
+          </DocumentsProvider>
+        </NotificationSettingsProvider>
+      </NavigationContainer>
+    </View>
+  );
+}
 
 export default function App() {
   useEffect(() => {
@@ -32,16 +48,7 @@ export default function App() {
 
   return (
     <ThemeProvider>
-      <View style={styles.container}>
-        <StatusBar translucent backgroundColor="transparent" />
-        <NavigationContainer>
-          <NotificationSettingsProvider>
-            <DocumentsProvider>
-              <AppNavigator />
-            </DocumentsProvider>
-          </NotificationSettingsProvider>
-        </NavigationContainer>
-      </View>
+      <AppContent />
     </ThemeProvider>
   );
 }
@@ -49,7 +56,6 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc', // Match Arkive's screen background
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 70, // Add padding for both Android and iOS
   },
 });
