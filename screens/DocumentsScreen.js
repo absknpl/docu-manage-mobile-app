@@ -119,20 +119,6 @@ export default function DocumentsScreen() {
   // Header for FlatList
   const renderListHeader = () => (
     <>
-      <SearchBar 
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-        onFocus={() => Haptics.selectionAsync()}
-      />
-      <CategoryFilter
-        categories={categories}
-        selectedCategory={selectedCategory}
-        onSelectCategory={cat => {
-          Haptics.selectionAsync();
-          setSelectedCategory(cat);
-          if (!cat) setSearchQuery('');
-        }}
-      />
     </>
   );
 
@@ -168,6 +154,24 @@ export default function DocumentsScreen() {
         </Text>
       </View>
 
+      {/* Search Bar on top of Documents */}
+      <View style={{ paddingHorizontal: 16, paddingTop: 12, backgroundColor: 'transparent' }}>
+        <SearchBar 
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          onFocus={() => Haptics.selectionAsync()}
+        />
+        <CategoryFilter
+          categories={categories}
+          selectedCategory={selectedCategory}
+          onSelectCategory={cat => {
+            Haptics.selectionAsync();
+            setSelectedCategory(cat);
+            if (!cat) setSearchQuery('');
+          }}
+        />
+      </View>
+
       {/* Scrolling Header (appears on scroll) */}
       <Animated.View style={[
         styles.scrollHeader,
@@ -188,14 +192,14 @@ export default function DocumentsScreen() {
 
       {/* Use DocumentList's FlatList as the main scrollable area */}
       <DocumentList 
-        searchQuery={effectiveSearch} 
+        searchQuery={selectedCategory ? selectedCategory : searchQuery} 
         categoryFilter={selectedCategory}
         onEditDocument={doc => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           setEditDocument(doc);
           handleOpenUploadModal();
         }}
-        ListHeaderComponent={renderListHeader}
+        ListHeaderComponent={null}
         onScroll={handleScroll}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}

@@ -12,13 +12,17 @@ import { Feather } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { useThemeMode } from '../contexts/ThemeContext';
 
-interface SearchBarProps {
-  value: string;
-  onChangeText: (text: string) => void;
-  onSearch?: (text: string) => void;
-}
+/**
+ * @typedef {Object} SearchBarProps
+ * @property {string} value
+ * @property {(text: string) => void} onChangeText
+ * @property {(text: string) => void=} onSearch
+ */
 
-const SearchBar: React.FC<SearchBarProps> = ({ 
+/**
+ * @param {SearchBarProps} props
+ */
+const SearchBar = ({ 
   value, 
   onChangeText, 
   onSearch 
@@ -38,7 +42,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
   const placeholderColor = colorScheme === 'dark' ? 'rgba(200, 210, 235, 0.6)' : 'rgba(100, 110, 140, 0.6)';
   const borderColor = colorScheme === 'dark' ? 'rgba(138, 173, 244, 0.15)' : 'rgba(99, 102, 241, 0.1)';
 
-  const animateFocus = (focused: boolean) => {
+  const animateFocus = (focused) => {
     Animated.parallel([
       Animated.spring(scaleValue, {
         toValue: focused ? 1.008 : 1,

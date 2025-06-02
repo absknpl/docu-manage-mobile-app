@@ -5,6 +5,7 @@ import AppNavigator from './navigation/AppNavigator';
 import { DocumentsProvider } from './contexts/DocumentsContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import * as Notifications from 'expo-notifications';
+import { NotificationSettingsProvider } from './contexts/NotificationSettingsContext';
 
 export default function App() {
   useEffect(() => {
@@ -28,9 +29,11 @@ export default function App() {
       <View style={styles.container}>
         <StatusBar translucent backgroundColor="transparent" />
         <NavigationContainer>
-          <DocumentsProvider>
-            <AppNavigator />
-          </DocumentsProvider>
+          <NotificationSettingsProvider>
+            <DocumentsProvider>
+              <AppNavigator />
+            </DocumentsProvider>
+          </NotificationSettingsProvider>
         </NavigationContainer>
       </View>
     </ThemeProvider>

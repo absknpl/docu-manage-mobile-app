@@ -127,6 +127,6 @@ const styles = StyleSheet.create({
   timelineContainer: {
     gap: 16,
     paddingBottom: 24,
-    marginTop: 0,
+    marginTop: 20,
   },
 });

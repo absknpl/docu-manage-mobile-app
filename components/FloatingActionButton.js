@@ -29,10 +29,7 @@ const FloatingActionButton = () => {
       })
     ]).start();
 
-    navigation.navigate('Documents', { 
-      showUploadModal: true,
-      merge: true 
-    });
+    navigation.navigate('Documents', { showUploadModal: true, merge: true });
   };
 
   return (

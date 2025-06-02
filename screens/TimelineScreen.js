@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { View, StyleSheet, Animated, ScrollView, Text, TouchableOpacity, Platform } from 'react-native';
+import { View, StyleSheet, Animated, ScrollView, Text, TouchableOpacity, Platform, FlatList } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import TimelineView from '../components/TimelineView';
@@ -29,6 +29,8 @@ export default function TimelineScreen() {
     setActiveFilter(filter);
   };
 
+  const filterOptions = ['all', 'today', 'week', 'month', 'year'];
+
   return (
     <SafeAreaView style={[styles.container, isPop ? { backgroundColor: theme.faded } : colorScheme === 'dark' && { backgroundColor: '#0f172a' }]}>
       <View style={[
@@ -45,7 +47,7 @@ export default function TimelineScreen() {
           styles.mainHeaderSubtitle,
           isPop ? { color: theme.textOnPrimary, opacity: 0.9 } : colorScheme === 'dark' && { color: '#94a3b8' }
         ]}>
-          Your activity history
+          Expiration Projection dates and reminders
         </Text>
       </View>
 
@@ -63,12 +65,13 @@ export default function TimelineScreen() {
       </Animated.View>
 
       <View style={styles.filterWrapper}>
-        <ScrollView
+        <FlatList
+          data={filterOptions}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterContainer}
-        >
-          {['all', 'today', 'week', 'month', 'year'].map((filter) => (
+          keyExtractor={(item) => item}
+          renderItem={({ item: filter }) => (
             <TouchableOpacity key={filter} onPress={() => handleFilterPress(filter)} activeOpacity={0.7}>
               <View style={[
                 styles.filterPill,
@@ -86,8 +89,8 @@ export default function TimelineScreen() {
                 </Text>
               </View>
             </TouchableOpacity>
-          ))}
-        </ScrollView>
+          )}
+        />
       </View>
 
       <Animated.ScrollView

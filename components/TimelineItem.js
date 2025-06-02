@@ -47,47 +47,111 @@ export default function TimelineItem({ document, isLast, colors, isPop }) {
   return (
     <View style={[
       styles.item,
-      isPop ? {
+      {
         borderLeftColor: color,
-        backgroundColor: theme.card,
-        shadowColor: theme.popShadow,
-        borderWidth: 2,
-        elevation: 8,
+        // Use a more distinct background color for TimelineItem
+        backgroundColor: isPop
+          ? theme.card
+          : (isDarkMode
+              ? '#232946' // darker card for dark mode
+              : '#f1f5fd' // light blue-gray for light mode
+            ),
+        shadowColor: isPop ? theme.popShadow : (isDarkMode ? '#000' : '#64748b'),
+        borderWidth: 0,
+        borderRadius: 16,
+        elevation: 4,
+        marginBottom: 12,
+      },
+      isPop && {
+        borderLeftWidth: 5,
+        borderWidth: 1.5,
+        borderColor: color,
+        shadowOpacity: 0.18,
+        shadowRadius: 8,
         transform: [{ rotate: '-1deg' }],
-      } : {
-        borderLeftColor: color,
-        backgroundColor: colors.cardBackground,
-        shadowColor: isDarkMode ? '#000' : '#64748b',
       }
     ]}>
       <View style={styles.marker}>
-        <View style={[styles.dot, isPop ? { backgroundColor: color, borderWidth: 2, borderColor: theme.accent } : { backgroundColor: color }]} />
+        <View style={[
+          styles.dot,
+          {
+            backgroundColor: color,
+            borderWidth: isPop ? 2 : 0,
+            borderColor: isPop ? theme.accent : color,
+            width: 14,
+            height: 14,
+            borderRadius: 7,
+          }
+        ]} />
         {(status === 'today' || status === 'tomorrow') && (
           <Feather name="alert-triangle" size={16} color={color} style={styles.warningIcon} />
         )}
-        {!isLast && <View style={[styles.line, isPop ? { backgroundColor: theme.accent } : { backgroundColor: isDarkMode ? '#363a4f' : '#e2e8f0' }]} />}
+        {!isLast && <View style={[
+          styles.line,
+          { backgroundColor: isPop ? theme.accent : (isDarkMode ? '#334155' : '#e2e8f0'), width: 3, left: 5.5 }
+        ]} />}
       </View>
       <View style={styles.content}>
         <View style={styles.dateRow}>
-          <Text style={[styles.dateText, { color: colors.secondaryText }, isPop && { fontFamily: theme.popFont }]}>
+          <Text style={[
+            styles.dateText,
+            { color: colors.secondaryText, fontWeight: '700', fontSize: 15 },
+            isPop && { fontFamily: theme.popFont }
+          ]}>
             {format(date, 'EEE, MMM d')}
           </Text>
-          <View style={[styles.status, { backgroundColor: statusBgColor }]}>
-            <Text style={[styles.statusText, { color }, isPop && { fontFamily: theme.popFont }]}>{label}</Text>
+          <View style={[
+            styles.status,
+            {
+              backgroundColor: statusBgColor,
+              borderRadius: 16,
+              paddingHorizontal: 10,
+              paddingVertical: 3,
+              borderWidth: 1.5,
+              borderColor: color,
+            }
+          ]}>
+            <Text style={[
+              styles.statusText,
+              { color, fontWeight: '700', fontSize: 12 },
+              isPop && { fontFamily: theme.popFont }
+            ]}>{label}</Text>
           </View>
         </View>
-        <Text style={[styles.docTitle, { color: colors.primaryText }, isPop && { fontFamily: theme.popFont, fontWeight: 'bold', fontSize: 18 }]}>
+        <Text style={[
+          styles.docTitle,
+          { color: colors.primaryText, fontWeight: '700', fontSize: 17, marginTop: 2 },
+          isPop && { fontFamily: theme.popFont, fontWeight: 'bold', fontSize: 18 }
+        ]}>
           {document.title}
         </Text>
         <View style={styles.meta}>
           {document.category && (
-            <View style={[styles.category, isPop ? { backgroundColor: theme.faded, borderColor: theme.accent, borderWidth: 1.5 } : { backgroundColor: categoryBgColor }]}>
-              <Text style={[styles.categoryText, { color: isPop ? theme.accent : '#6366f1' }, isPop && { fontFamily: theme.popFont }]}>
+            <View style={[
+              styles.category,
+              {
+                backgroundColor: isPop ? theme.faded : categoryBgColor,
+                borderColor: isPop ? theme.accent : '#6366f1',
+                borderWidth: 1.5,
+                borderRadius: 14,
+                paddingHorizontal: 10,
+                paddingVertical: 3,
+              }
+            ]}>
+              <Text style={[
+                styles.categoryText,
+                { color: isPop ? theme.accent : '#6366f1', fontWeight: '600', fontSize: 12 },
+                isPop && { fontFamily: theme.popFont }
+              ]}>
                 {document.category}
               </Text>
             </View>
           )}
-          <Text style={[styles.year, { color: colors.secondaryText }, isPop && { fontFamily: theme.popFont }]}>
+          <Text style={[
+            styles.year,
+            { color: colors.secondaryText, fontWeight: '500', fontSize: 13 },
+            isPop && { fontFamily: theme.popFont }
+          ]}>
             {format(date, 'yyyy')}
           </Text>
         </View>

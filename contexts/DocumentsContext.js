@@ -1,60 +1,45 @@
 import React, { createContext, useState, useContext } from 'react';
 import * as Notifications from 'expo-notifications';
+import { useNotificationSettings } from './NotificationSettingsContext';
 
 const DocumentsContext = createContext();
-
-// Notification time (24h format)
-const NOTIFICATION_HOUR = 23;
-const NOTIFICATION_MINUTE = 35;
 
 export function DocumentsProvider({ children }) {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(false);
+  const { notificationTime, remindBefore } = useNotificationSettings();
 
   // Helper to schedule notifications
   const scheduleDocumentNotifications = async (doc) => {
     // Cancel previous notifications for this doc (by id tag)
     await Notifications.cancelScheduledNotificationAsync(doc.id + '-expire');
-    await Notifications.cancelScheduledNotificationAsync(doc.id + '-week');
+    await Notifications.cancelScheduledNotificationAsync(doc.id + '-remind');
 
     const expirationDate = new Date(doc.expirationDate);
     const now = new Date();
     // Only schedule if in the future
     if (expirationDate > now) {
-      // If the document expires within the next 7 days, notify at 9am on the expiration day
-      const msInDay = 24 * 60 * 60 * 1000;
-      const daysUntilExpire = Math.floor((expirationDate - now) / msInDay);
-      if (daysUntilExpire < 7) {
-        const expireTrigger = new Date(expirationDate);
-        expireTrigger.setHours(NOTIFICATION_HOUR, NOTIFICATION_MINUTE, 0, 0);
-        await Notifications.scheduleNotificationAsync({
-          identifier: doc.id + '-expire',
-          content: {
-            title: 'Document Expired',
-            body: `The document "${doc.title}" expires today.`,
-            sound: true,
-          },
-          trigger: expireTrigger,
-        });
-      } else {
-        // Notify a week before
-        const weekBefore = new Date(expirationDate);
-        weekBefore.setDate(weekBefore.getDate() - 7);
-        weekBefore.setHours(NOTIFICATION_HOUR, NOTIFICATION_MINUTE, 0, 0);
-        if (weekBefore > now) {
+      // Remind before (custom)
+      if (remindBefore > 0) {
+        const remindDate = new Date(expirationDate);
+        remindDate.setDate(remindDate.getDate() - remindBefore);
+        remindDate.setHours(notificationTime.hour, notificationTime.minute, 0, 0);
+        if (remindDate > now) {
           await Notifications.scheduleNotificationAsync({
-            identifier: doc.id + '-week',
+            identifier: doc.id + '-remind',
             content: {
               title: 'Document Expiry Reminder',
-              body: `The document "${doc.title}" will expire in 1 week.`,
+              body: `The document "${doc.title}" will expire in ${remindBefore === 1 ? '1 day' : remindBefore + ' days'}.`,
               sound: true,
             },
-            trigger: weekBefore,
+            trigger: remindDate,
           });
         }
-        // Also notify on the day of expiration
-        const expireTrigger = new Date(expirationDate);
-        expireTrigger.setHours(NOTIFICATION_HOUR, NOTIFICATION_MINUTE, 0, 0);
+      }
+      // Also notify on the day of expiration
+      const expireTrigger = new Date(expirationDate);
+      expireTrigger.setHours(notificationTime.hour, notificationTime.minute, 0, 0);
+      if (expireTrigger > now) {
         await Notifications.scheduleNotificationAsync({
           identifier: doc.id + '-expire',
           content: {

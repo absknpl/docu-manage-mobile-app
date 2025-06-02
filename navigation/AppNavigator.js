@@ -12,6 +12,7 @@ export default function AppNavigator() {
   return (
     <View style={[styles.container, colorScheme === 'dark' && { backgroundColor: '#181926' }]}> 
       <Stack.Navigator 
+        initialRouteName="Main"
         screenOptions={{ 
           headerShown: false,
           cardStyle: { 

@@ -15,11 +15,20 @@ import { Feather, Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useThemeMode } from '../contexts/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useNotificationSettings } from '../contexts/NotificationSettingsContext';
 
 const themeOptions = [
   { label: 'Pop', value: 'pop', icon: 'zap' },
   { label: 'Light', value: 'light', icon: 'sun' },
   { label: 'Dark', value: 'dark', icon: 'moon' },
+];
+
+const REMIND_OPTIONS = [
+  { label: 'On the day', value: 0 },
+  { label: '1 day before', value: 1 },
+  { label: '3 days before', value: 3 },
+  { label: '1 week before', value: 7 },
 ];
 
 const SettingsItem = ({ icon, label, value, onPress, isLast, children }) => {
@@ -103,26 +112,66 @@ const ThemeCard = ({ icon, label, value, isSelected, onSelect, previewColors }) 
   );
 };
 
+const RemindMeBeforeSelector = ({ value, onChange, options, onConfirm, onCancel, visible, colorScheme }) => {
+  if (!visible) return null;
+  return (
+    <View style={styles.remindModalOverlay}>
+      <View style={[styles.remindModal, colorScheme === 'dark' && { backgroundColor: '#181926' }]}> 
+        <Text style={[styles.remindModalTitle, colorScheme === 'dark' && { color: '#8aadf4' }]}>Remind Me Before</Text>
+        {options.map(opt => (
+          <TouchableOpacity
+            key={opt.value}
+            style={[
+              styles.remindModalOption,
+              value === opt.value && styles.remindModalOptionSelected
+            ]}
+            onPress={() => onChange(opt.value)}
+            activeOpacity={0.8}
+          >
+            <Text style={[
+              styles.remindModalOptionText,
+              value === opt.value && styles.remindModalOptionTextSelected
+            ]}>{opt.label}</Text>
+          </TouchableOpacity>
+        ))}
+        <View style={styles.remindModalActions}>
+          <TouchableOpacity style={styles.remindModalButton} onPress={onCancel}>
+            <Text style={styles.remindModalButtonText}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.remindModalButton, styles.remindModalButtonConfirm]} onPress={onConfirm}>
+            <Text style={[styles.remindModalButtonText, styles.remindModalButtonConfirmText]}>Confirm</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+};
+
 export default function SettingsScreen() {
   const [notifications, setNotifications] = useState(true);
   const [appVersion] = useState('1.0.0');
   const { themeMode, setThemeMode, colorScheme, theme } = useThemeMode();
+  const { notificationTime, setNotificationTime, remindBefore, setRemindBefore } = useNotificationSettings();
   const isPop = colorScheme === 'pop';
   const [headerScale] = useState(new Animated.Value(1));
+  const [tempNotificationTime, setTempNotificationTime] = useState(new Date(0,0,0,notificationTime.hour, notificationTime.minute));
+  const [tempRemindBefore, setTempRemindBefore] = useState(remindBefore);
+  const [showRemindConfirm, setShowRemindConfirm] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
   const handleSupport = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Linking.openURL('mailto:support@example.com?subject=Support%20Request');
+    Linking.openURL('mailto:contact@abisek.dev?subject=Support%20Request');
   };
 
   const handlePrivacy = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Linking.openURL('https://yourapp.com/privacy');
+    Linking.openURL('https://abisek.dev/arkive/privacy');
   };
 
   const handleRate = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Linking.openURL('https://yourapp.com/rate');
+    Linking.openURL('https://abisek.dev/arkive/rate');
   };
 
   const toggleNotifications = () => {
@@ -215,7 +264,42 @@ export default function SettingsScreen() {
               ios_backgroundColor="#e2e8f0"
             />
           </SettingsItem>
+          <SettingsItem 
+            icon="clock" 
+            label="Notification Time" 
+            value={tempNotificationTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            onPress={notifications ? () => setShowTimePicker(true) : undefined}
+          >
+            {/* Lower opacity if notifications are off */}
+            <View style={!notifications ? { opacity: 0.4 } : null} pointerEvents={notifications ? 'auto' : 'none'} />
+          </SettingsItem>
+          <SettingsItem
+            icon="calendar"
+            label="Remind Me Before"
+            value={REMIND_OPTIONS.find(opt => opt.value === tempRemindBefore)?.label}
+            onPress={notifications ? () => setShowRemindConfirm(true) : undefined}
+            isLast={true}
+          >
+            {/* Lower opacity if notifications are off */}
+            <View style={!notifications ? { opacity: 0.4 } : null} pointerEvents={notifications ? 'auto' : 'none'} />
+          </SettingsItem>
         </View>
+        {showTimePicker && (
+          <DateTimePicker
+            value={tempNotificationTime}
+            mode="time"
+            is24Hour={true}
+            display="spinner"
+            onChange={(event, selectedDate) => {
+              setShowTimePicker(false);
+              if (selectedDate) {
+                setTempNotificationTime(selectedDate);
+                setNotificationTime({ hour: selectedDate.getHours(), minute: selectedDate.getMinutes() });
+              }
+            }}
+            style={styles.timePicker}
+          />
+        )}
         <Text style={[styles.sectionTitle, colorScheme === 'dark' && { color: '#8aadf4' }]}>About</Text>
         <View style={[styles.settingCard, colorScheme === 'dark' && { backgroundColor: '#232946', shadowColor: '#000' }]}> 
           <SettingsItem 
@@ -248,6 +332,18 @@ export default function SettingsScreen() {
           <Text style={[styles.footerText, colorScheme === 'dark' && { color: '#8aadf4' }]}>© {new Date().getFullYear()} Abhishek Nepal</Text>
         </View>
       </ScrollView>
+      <RemindMeBeforeSelector
+        value={tempRemindBefore}
+        onChange={setTempRemindBefore}
+        options={REMIND_OPTIONS}
+        onConfirm={() => {
+          setRemindBefore(tempRemindBefore);
+          setShowRemindConfirm(false);
+        }}
+        onCancel={() => setShowRemindConfirm(false)}
+        visible={showRemindConfirm}
+        colorScheme={colorScheme}
+      />
     </SafeAreaView>
   );
 }
@@ -434,5 +530,84 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     marginBottom: 4,
+  },
+  remindModalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  remindModal: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    padding: 24,
+    width: 320,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 10,
+    alignItems: 'stretch',
+  },
+  remindModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#334155',
+    marginBottom: 18,
+    textAlign: 'center',
+  },
+  remindModalOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    marginBottom: 8,
+    backgroundColor: '#f1f5f9',
+  },
+  remindModalOptionSelected: {
+    backgroundColor: '#6366f1',
+  },
+  remindModalOptionText: {
+    fontSize: 16,
+    color: '#334155',
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  remindModalOptionTextSelected: {
+    color: '#fff',
+  },
+  remindModalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 16,
+  },
+  remindModalButton: {
+    flex: 1,
+    backgroundColor: '#e2e8f0',
+    borderRadius: 8,
+    paddingVertical: 10,
+    marginHorizontal: 6,
+    alignItems: 'center',
+  },
+  remindModalButtonText: {
+    color: '#334155',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  remindModalButtonConfirm: {
+    backgroundColor: '#6366f1',
+  },
+  remindModalButtonConfirmText: {
+    color: '#fff',
+  },
+  disabledOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(180, 180, 180, 0.25)',
+    borderRadius: 10,
+    zIndex: 10,
   },
 });
