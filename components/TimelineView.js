@@ -5,49 +5,63 @@ import TimelineItem from './TimelineItem';
 import { useDocuments } from '../contexts/DocumentsContext';
 import { useThemeMode } from '../contexts/ThemeContext';
 
-export default function TimelineView() {
+export default function TimelineView({ filter }) {
   const { documents } = useDocuments();
-  const { colorScheme } = useThemeMode();
+  const { colorScheme, theme } = useThemeMode();
+  const isPop = colorScheme === 'pop';
   const isDarkMode = colorScheme === 'dark';
-  
-  const upcomingDocuments = documents
-    .filter(doc => doc.expirationDate)
-    .sort((a, b) => new Date(a.expirationDate) - new Date(b.expirationDate));
 
-  // Colors for both modes
+  const now = new Date();
+  let filteredDocuments = documents.filter(doc => doc.expirationDate);
+  if (filter && filter !== 'all') {
+    filteredDocuments = filteredDocuments.filter(doc => {
+      const exp = new Date(doc.expirationDate);
+      if (filter === 'today') return exp.toDateString() === now.toDateString();
+      else if (filter === 'week') {
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay());
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        return exp >= startOfWeek && exp <= endOfWeek;
+      } else if (filter === 'month') return exp.getMonth() === now.getMonth() && exp.getFullYear() === now.getFullYear();
+      else if (filter === 'year') return exp.getFullYear() === now.getFullYear();
+      return true;
+    });
+  }
+  const upcomingDocuments = filteredDocuments.sort((a, b) => new Date(a.expirationDate) - new Date(b.expirationDate));
+
   const colors = {
-    background: isDarkMode ? '#181926' : '#f8fafc',
-    cardBackground: isDarkMode ? '#24273a' : '#ffffff',
-    primaryText: isDarkMode ? '#e0def4' : '#1e293b',
-    secondaryText: isDarkMode ? '#908caa' : '#64748b',
-    accent: isDarkMode ? '#8aadf4' : '#3b82f6',
-    icon: isDarkMode ? '#8aadf4' : '#3b82f6',
-    emptyIcon: isDarkMode ? '#6e6a86' : '#94a3b8',
+    background: theme.faded || (isDarkMode ? '#181926' : '#f8fafc'),
+    cardBackground: theme.card,
+    primaryText: theme.text,
+    secondaryText: isPop ? theme.accent : (isDarkMode ? '#908caa' : '#64748b'),
+    accent: theme.accent,
+    icon: theme.icon,
+    emptyIcon: isPop ? theme.accent : (isDarkMode ? '#6e6a86' : '#94a3b8'),
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
-        <View style={[styles.iconContainer, { backgroundColor: colors.cardBackground }]}>
-          <Feather name="calendar" size={24} color={colors.icon} />
-        </View>
-        <View>
-          <Text style={[styles.title, { color: colors.primaryText }]}>Document Timeline</Text>
-          <Text style={[styles.subtitle, { color: colors.secondaryText }]}>
-            Upcoming deadlines and expiration dates
-          </Text>
-        </View>
-      </View>
-      
+    <View style={[styles.container, { backgroundColor: colors.background }]}> 
       {upcomingDocuments.length === 0 ? (
         <View style={styles.emptyState}>
-          <View style={[styles.emptyIconContainer, { backgroundColor: colors.cardBackground }]}>
+          <View style={[
+            styles.emptyIconContainer, 
+            isPop ? { 
+              backgroundColor: theme.faded, 
+              borderColor: theme.accent, 
+              borderWidth: 2, 
+              shadowColor: theme.popShadow, 
+              elevation: 8 
+            } : { 
+              backgroundColor: colors.cardBackground 
+            }
+          ]}>
             <Feather name="file" size={48} color={colors.emptyIcon} />
           </View>
-          <Text style={[styles.emptyText, { color: colors.secondaryText }]}>
+          <Text style={[styles.emptyText, { color: colors.secondaryText }, isPop && { fontFamily: theme.popFont }]}>
             No upcoming deadlines
           </Text>
-          <Text style={[styles.emptySubtext, { color: colors.secondaryText }]}>
+          <Text style={[styles.emptySubtext, { color: colors.secondaryText }, isPop && { fontFamily: theme.popFont }]}>
             Documents with expiration dates will appear here
           </Text>
         </View>
@@ -59,6 +73,7 @@ export default function TimelineView() {
               document={item} 
               isLast={index === upcomingDocuments.length - 1}
               colors={colors}
+              isPop={isPop}
             />
           )}
           keyExtractor={item => item.id}
@@ -73,39 +88,8 @@ export default function TimelineView() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-  paddingTop: 16,
-  paddingBottom: 0,
-  gap: 24,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    marginBottom: 8,
-  },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
-    letterSpacing: -0.5,
-  },
-  subtitle: {
-    fontSize: 14,
-    fontWeight: '400',
-    marginTop: 2,
+    padding: 0,
+    gap: 0,
   },
   emptyState: {
     flex: 1,
@@ -113,6 +97,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 40,
     gap: 8,
+    marginTop: 0,
   },
   emptyIconContainer: {
     width: 96,
@@ -142,5 +127,6 @@ const styles = StyleSheet.create({
   timelineContainer: {
     gap: 16,
     paddingBottom: 24,
+    marginTop: 0,
   },
 });

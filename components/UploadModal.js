@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -19,15 +19,28 @@ import * as DocumentPicker from 'expo-document-picker';
 import { TAG_ICONS, TAGS } from './TagIcons';
 import { useThemeMode } from '../contexts/ThemeContext';
 
-export default function UploadModal({ visible, onClose, onSubmit }) {
+export default function UploadModal({ visible, onClose, onSubmit, editDocument }) {
   const { colorScheme } = useThemeMode();
   const [file, setFile] = useState(null);
   const [title, setTitle] = useState('');
   const [date, setDate] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(Platform.OS === 'ios');
+  const [showDatePicker, setShowDatePicker] = useState(false); // Always start hidden
   const [tempDate, setTempDate] = useState(new Date());
   const [category, setCategory] = useState(TAGS[0]); // Default to first category
   const [isLoading, setIsLoading] = useState(false);
+  const [dateWarning, setDateWarning] = useState(false);
+
+  // If editDocument is provided, prefill the form
+  useEffect(() => {
+    if (visible && editDocument) {
+      setFile(editDocument.file || null);
+      setTitle(editDocument.title || '');
+      setDate(editDocument.expirationDate ? new Date(editDocument.expirationDate) : new Date());
+      setCategory(editDocument.category || TAGS[0]);
+    } else if (visible && !editDocument) {
+      resetForm();
+    }
+  }, [visible, editDocument]);
 
   const pickDocument = async () => {
     try {
@@ -51,31 +64,35 @@ export default function UploadModal({ visible, onClose, onSubmit }) {
   };
 
   const handleSubmit = async () => {
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const selected = new Date(date);
+    selected.setHours(0,0,0,0);
+    if (selected.getTime() === today.getTime() && !dateWarning) {
+      setDateWarning(true);
+      return;
+    }
     if (!file) {
       Alert.alert('Required', 'Please select a file first');
       return;
     }
-    
     if (!title.trim()) {
       Alert.alert('Required', 'Please enter a document title');
       return;
     }
-    
     setIsLoading(true);
-    
     try {
       const newDoc = {
-        id: Date.now().toString(),
+        id: editDocument ? editDocument.id : Date.now().toString(),
         title: title.trim(),
         file,
         expirationDate: date.toISOString(),
         category: category || TAGS[0],
-        createdAt: new Date().toISOString(),
+        createdAt: editDocument ? editDocument.createdAt : new Date().toISOString(),
         size: file.size,
-        type: file.mimeType || 'application/octet-stream'
+        type: file.mimeType || 'application/octet-stream',
       };
-      
-      await onSubmit(newDoc);
+      await onSubmit(newDoc, !!editDocument);
       resetForm();
       onClose();
     } catch (error) {
@@ -83,6 +100,7 @@ export default function UploadModal({ visible, onClose, onSubmit }) {
       Alert.alert('Error', 'Failed to upload document. Please try again.');
     } finally {
       setIsLoading(false);
+      setDateWarning(false);
     }
   };
 
@@ -94,10 +112,8 @@ export default function UploadModal({ visible, onClose, onSubmit }) {
   };
 
   const handleDatePress = () => {
-    if (Platform.OS === 'android') {
-      setShowDatePicker(true);
-    }
-    // For iOS, it's always visible so no need to toggle
+    setTempDate(date); // Always start with the current date
+    setShowDatePicker(true);
   };
 
   const onChangeDate = (event, selectedDate) => {
@@ -114,13 +130,18 @@ export default function UploadModal({ visible, onClose, onSubmit }) {
 
   const confirmDateIOS = () => {
     setDate(tempDate);
-    setShowDatePicker(false);
+    setShowDatePicker(false); // Hide after confirm
   };
 
   const handleModalClose = () => {
     resetForm();
     onClose();
   };
+
+  // Reset warning if user changes date
+  useEffect(() => {
+    setDateWarning(false);
+  }, [date]);
 
   return (
     <Modal
@@ -141,7 +162,7 @@ export default function UploadModal({ visible, onClose, onSubmit }) {
           
           <View style={styles.modalContainer}>
             <View style={styles.header}>
-              <Text style={styles.title}>Upload Document</Text>
+              <Text style={styles.title}>{editDocument ? 'Edit Document' : 'Upload Document'}</Text>
               <TouchableOpacity onPress={handleModalClose}>
                 <Feather name="x" size={24} color="#fff" />
               </TouchableOpacity>
@@ -200,18 +221,18 @@ export default function UploadModal({ visible, onClose, onSubmit }) {
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Expiration Date</Text>
                 <TouchableOpacity 
-                  style={styles.dateInput}
+                  style={[styles.dateInput, dateWarning && { borderColor: '#ef4444', backgroundColor: '#fee2e2' }]}
                   onPress={handleDatePress}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.dateText}>
+                  <Text style={[styles.dateText, dateWarning && { color: '#ef4444' }] }>
                     {date.toLocaleDateString('en-US', { 
                       year: 'numeric', 
                       month: 'long', 
                       day: 'numeric' 
                     })}
                   </Text>
-                  <Feather name="calendar" size={18} color="#6366f1" />
+                  <Feather name="calendar" size={18} color={dateWarning ? '#ef4444' : '#6366f1'} />
                 </TouchableOpacity>
                 {showDatePicker && (
                   <View style={styles.datePickerContainer}>
@@ -287,7 +308,7 @@ export default function UploadModal({ visible, onClose, onSubmit }) {
                   {isLoading ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text style={styles.submitBtnText}>Upload</Text>
+                    <Text style={styles.submitBtnText}>{isLoading ? '' : (editDocument ? 'Save Changes' : 'Upload')}</Text>
                   )}
                 </TouchableOpacity>
               </View>

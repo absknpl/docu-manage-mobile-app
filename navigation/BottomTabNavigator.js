@@ -1,6 +1,5 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { BlurView } from 'expo-blur';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { StyleSheet, Platform, View, Text, Animated, Easing } from 'react-native';
 import DocumentsScreen from '../screens/DocumentsScreen';
@@ -12,7 +11,8 @@ import { useThemeMode } from '../contexts/ThemeContext';
 const Tab = createBottomTabNavigator();
 
 export default function BottomTabNavigator() {
-  const { colorScheme } = useThemeMode();
+  const { colorScheme, theme } = useThemeMode();
+  const isPop = colorScheme === 'pop';
   const isDarkMode = colorScheme === 'dark';
   
   // Enhanced animations with spring and timing combinations
@@ -63,38 +63,35 @@ export default function BottomTabNavigator() {
   };
 
   return (
-    <View style={[styles.container, isDarkMode && { backgroundColor: '#0f0f17' }]}>
+    <View style={[styles.container, isPop ? { backgroundColor: theme.faded } : (isDarkMode && { backgroundColor: '#0f0f17' })]}>
       <Tab.Navigator
         initialRouteName="Documents"
         screenOptions={({ route }) => ({
           headerShown: false,
-          tabBarActiveTintColor: isDarkMode ? '#8aadf4' : '#6366f1',
-          tabBarInactiveTintColor: isDarkMode ? 'rgba(138, 173, 244, 0.5)' : 'rgba(99, 102, 241, 0.5)',
+          tabBarActiveTintColor: isPop ? theme.accent : (isDarkMode ? '#8aadf4' : '#6366f1'),
+          tabBarInactiveTintColor: isPop ? '#fc6076' : (isDarkMode ? 'rgba(138, 173, 244, 0.5)' : 'rgba(99, 102, 241, 0.5)'),
           tabBarStyle: [
             styles.tabBar,
-            isDarkMode ? styles.tabBarDark : styles.tabBarLight,
+            isPop ? {
+              backgroundColor: theme.faded,
+              borderColor: theme.accent,
+              shadowColor: theme.popShadow,
+              borderWidth: 2,
+              elevation: 16,
+            } : (isDarkMode ? styles.tabBarDark : styles.tabBarLight),
             {
-              shadowColor: isDarkMode ? '#8aadf4' : '#6366f1',
+              shadowColor: isPop ? theme.popShadow : (isDarkMode ? '#8aadf4' : '#6366f1'),
               borderTopWidth: 1,
-              borderTopColor: isDarkMode ? 'rgba(138, 173, 244, 0.15)' : 'rgba(99, 102, 241, 0.15)',
+              borderTopColor: isPop ? theme.accent : (isDarkMode ? 'rgba(138, 173, 244, 0.15)' : 'rgba(99, 102, 241, 0.15)'),
             }
           ],
-          tabBarBackground: () => (
-            <BlurView
-              intensity={Platform.OS === 'ios' ? 40 : 80}
-              tint={isDarkMode ? 'dark' : 'light'}
-              style={StyleSheet.absoluteFill}
-            />
-          ),
           tabBarItemStyle: styles.tabBarItem,
           tabBarLabel: ({ focused, color }) => (
             <View style={{ alignItems: 'center' }}>
               <Text style={[
                 styles.tabBarLabel,
-                { 
-                  color: focused ? color : (isDarkMode ? 'rgba(138, 173, 244, 0.7)' : 'rgba(99, 102, 241, 0.7)'),
-                  marginTop: 4
-                },
+                isPop && { color: focused ? theme.accent : '#fc6076', fontFamily: theme.popFont, fontWeight: 'bold', fontSize: 12, textShadowColor: theme.accent, textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 2 },
+                { color: focused ? color : (isPop ? '#fc6076' : (isDarkMode ? 'rgba(138, 173, 244, 0.7)' : 'rgba(99, 102, 241, 0.7)')), marginTop: 4 },
                 focused && styles.tabBarLabelActive
               ]}>
                 {route.name}
@@ -105,42 +102,63 @@ export default function BottomTabNavigator() {
             React.useEffect(() => {
               handleTabPress(route, focused);
             }, [focused]);
-            
             const animation = tabAnimations[route.name];
-            const iconSize = focused ? 26 : 22;
-
+            const iconSize = focused ? 30 : 24;
+            // Microinteraction: pulse effect on focus
+            const pulse = animation && focused ?
+              animation.scale.interpolate({
+                inputRange: [1, 1.2],
+                outputRange: [1, 1.08],
+                extrapolate: 'clamp'
+              }) : 1;
             return (
               <View style={styles.iconContainer}>
-                {/* Selected tab indicator */}
+                {/* Selected tab indicator (animated underline) */}
                 <Animated.View
                   style={[
                     styles.selectedIndicator,
-                    {
-                      opacity: animation.indicatorOpacity,
-                      backgroundColor: isDarkMode ? 'rgba(138, 173, 244, 0.2)' : 'rgba(99, 102, 241, 0.15)',
-                    }
+                    isPop ? { backgroundColor: theme.accent, opacity: focused ? 1 : 0.2 } : {
+                      opacity: animation ? animation.indicatorOpacity : 0,
+                      backgroundColor: isDarkMode ? 'rgba(138, 173, 244, 0.22)' : 'rgba(99, 102, 241, 0.18)',
+                    },
+                    { transform: [ { scaleX: animation ? animation.bgScale : 0 } ] }
                   ]}
                 />
-                
-                {/* Icon background */}
+                {/* Icon background with glass effect and animated scale */}
                 <Animated.View
                   style={[
                     styles.iconBackground,
-                    {
-                      transform: [{ scale: animation.bgScale }],
+                    isPop ? {
+                      backgroundColor: focused ? theme.accent : theme.faded,
+                      borderWidth: focused ? 2 : 1,
+                      borderColor: theme.accent,
+                      shadowColor: theme.popShadow,
+                      shadowOpacity: focused ? 0.25 : 0.1,
+                      shadowRadius: focused ? 16 : 6,
+                      shadowOffset: { width: 0, height: 4 },
+                    } : {
+                      transform: [ { scale: animation ? animation.bgScale : 0.8 } ],
                       backgroundColor: focused
                         ? (isDarkMode ? 'rgba(138, 173, 244, 0.18)' : 'rgba(99, 102, 241, 0.13)')
                         : 'transparent',
+                      borderWidth: focused ? 1.5 : 0,
+                      borderColor: focused
+                        ? (isDarkMode ? 'rgba(138, 173, 244, 0.25)' : 'rgba(99, 102, 241, 0.18)')
+                        : 'transparent',
+                      shadowColor: focused ? (isDarkMode ? '#8aadf4' : '#6366f1') : 'transparent',
+                      shadowOpacity: focused ? 0.18 : 0,
+                      shadowRadius: focused ? 12 : 0,
+                      shadowOffset: { width: 0, height: 4 },
                     }
                   ]}
                 />
-                
-                {/* Icon */}
+                {/* Icon with microinteraction pulse */}
                 <Animated.View
                   style={{
                     transform: [
-                      { scale: animation.scale },
-                      { translateY: animation.translateY }
+                      { scale: pulse },
+                      { scale: animation ? animation.scale : 1 },
+                      { translateY: animation ? animation.translateY : 0 }
                     ],
                   }}
                 >
@@ -148,28 +166,28 @@ export default function BottomTabNavigator() {
                     <MaterialCommunityIcons
                       name="file-document-multiple-outline"
                       size={iconSize}
-                      color={color}
+                      color={isPop ? theme.accent : color}
                     />
                   )}
                   {route.name === 'Timeline' && (
                     <Ionicons
                       name="time-outline"
                       size={iconSize}
-                      color={color}
+                      color={isPop ? theme.accent : color}
                     />
                   )}
                   {route.name === 'Notifications' && (
                     <Ionicons
                       name="notifications-outline"
                       size={iconSize}
-                      color={color}
+                      color={isPop ? theme.accent : color}
                     />
                   )}
                   {route.name === 'Settings' && (
                     <Ionicons
                       name="settings-outline"
                       size={iconSize}
-                      color={color}
+                      color={isPop ? theme.accent : color}
                     />
                   )}
                 </Animated.View>

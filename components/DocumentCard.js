@@ -7,10 +7,11 @@ import { TAG_ICONS } from './TagIcons';
 import { useDocuments } from '../contexts/DocumentsContext';
 import { useThemeMode } from '../contexts/ThemeContext';
 
-export default function DocumentCard({ document, onPress, onDelete, colors }) {
+export default function DocumentCard({ document, onPress, onDelete, onEdit }) {
   const [showViewer, setShowViewer] = useState(false);
   const { deleteDocument } = useDocuments();
-  const { colorScheme } = useThemeMode();
+  const { colorScheme, theme } = useThemeMode();
+  const isPop = colorScheme === 'pop';
   const isDarkMode = colorScheme === 'dark';
 
   const getFileIcon = () => {
@@ -19,14 +20,41 @@ export default function DocumentCard({ document, onPress, onDelete, colors }) {
     return '📁';
   };
 
+  const handleDelete = (e) => {
+    e.stopPropagation();
+    if (onDelete) {
+      onDelete(document.id);
+    } else {
+      deleteDocument(document.id);
+    }
+  };
+
+  const handleEdit = (e) => {
+    e.stopPropagation();
+    if (onEdit) {
+      onEdit(document);
+    }
+  };
+
   return (
     <>
       <TouchableOpacity
         style={[
           styles.card,
-          {
-            backgroundColor: colors.cardBackground,
-            borderColor: colors.border,
+          isPop && {
+            backgroundColor: theme.card,
+            borderColor: theme.accent,
+            shadowColor: theme.popShadow,
+            borderWidth: 2.5,
+            elevation: 12,
+            transform: [{ rotate: '-1.5deg' }],
+            shadowOpacity: 0.25,
+            shadowRadius: 16,
+            shadowOffset: { width: 0, height: 8 },
+          },
+          !isPop && {
+            backgroundColor: theme.card,
+            borderColor: theme.border,
             shadowColor: isDarkMode ? '#000' : '#64748b',
           },
         ]}
@@ -34,48 +62,94 @@ export default function DocumentCard({ document, onPress, onDelete, colors }) {
         activeOpacity={0.92}
       >
         <View style={styles.cardHeader}>
-          <Text style={styles.documentIcon}>{getFileIcon()}</Text>
+          <Text style={[
+            styles.documentIcon,
+            isPop && {
+              textShadowColor: theme.accent,
+              textShadowOffset: { width: 2, height: 2 },
+              textShadowRadius: 6,
+              color: theme.accent,
+            },
+          ]}>{getFileIcon()}</Text>
           <View style={styles.cardActions}>
             <TouchableOpacity 
               onPress={() => setShowViewer(true)}
               style={styles.actionButton}
             >
-              <Feather name="eye" size={18} color={colors.secondaryText} />
+              <Feather name="eye" size={20} color={isPop ? theme.accent : theme.icon} />
             </TouchableOpacity>
             <TouchableOpacity 
-              onPress={(e) => {
-                e.stopPropagation();
-                deleteDocument(document.id);
-              }}
+              onPress={handleEdit}
               style={styles.actionButton}
             >
-              <Feather name="trash-2" size={18} color={colors.secondaryText} />
+              <Feather name="edit-2" size={20} color={isPop ? theme.accent : theme.icon} />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              onPress={handleDelete}
+              style={styles.actionButton}
+            >
+              <Feather name="trash-2" size={20} color={isPop ? theme.error : theme.icon} />
             </TouchableOpacity>
           </View>
         </View>
-        
         <View style={styles.documentInfo}>
-          <Text style={[styles.title, { color: colors.primaryText }]}>{document.title}</Text>
-          
+          <Text style={[
+            styles.title,
+            { color: theme.text },
+            isPop && {
+              fontFamily: theme.popFont,
+              fontWeight: 'bold',
+              fontSize: 22,
+              color: theme.accent,
+              letterSpacing: 0.5,
+            },
+          ]}>{document.title}</Text>
           {document.category && (
-            <View style={[styles.category, { backgroundColor: isDarkMode ? 'rgba(99,102,241,0.18)' : 'rgba(99,102,241,0.1)' }] }>
-              {/* Pass accent color to TagIcons if needed */}
+            <View style={[
+              styles.category,
+              isPop
+                ? {
+                    backgroundColor: theme.faded,
+                    borderColor: theme.accent,
+                    borderWidth: 2,
+                    shadowColor: theme.accent,
+                    shadowOpacity: 0.12,
+                    shadowRadius: 8,
+                    marginTop: 2,
+                  }
+                : { backgroundColor: isDarkMode ? 'rgba(99,102,241,0.18)' : 'rgba(99,102,241,0.1)' },
+            ]}>
               {TAG_ICONS[document.category] || TAG_ICONS['Other']}
-              <Text style={[styles.categoryText, { color: colors.accent }]}>{document.category}</Text>
+              <Text style={[
+                styles.categoryText,
+                { color: theme.accent },
+                isPop && {
+                  fontFamily: theme.popFont,
+                  fontWeight: 'bold',
+                  fontSize: 15,
+                  letterSpacing: 0.2,
+                },
+              ]}>{document.category}</Text>
             </View>
           )}
-          
           {document.expirationDate && (
             <View style={styles.expiry}>
-              <Feather name="calendar" size={14} color={colors.secondaryText} />
-              <Text style={[styles.expiryText, { color: colors.secondaryText }] }>
+              <Feather name="calendar" size={16} color={isPop ? theme.accent : theme.icon} />
+              <Text style={[
+                styles.expiryText,
+                { color: isPop ? theme.accent : theme.icon },
+                isPop && {
+                  fontFamily: theme.popFont,
+                  fontWeight: 'bold',
+                  fontSize: 15,
+                },
+              ]}>
                 Expires: {format(new Date(document.expirationDate), 'MMM d, yyyy')}
               </Text>
             </View>
           )}
         </View>
       </TouchableOpacity>
-      
       <DocumentViewer 
         document={document}
         visible={showViewer}

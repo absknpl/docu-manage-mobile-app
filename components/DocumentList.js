@@ -4,7 +4,7 @@ import DocumentCard from './DocumentCard';
 import { useDocuments } from '../contexts/DocumentsContext';
 import { useThemeMode } from '../contexts/ThemeContext';
 
-export default function DocumentList({ searchQuery, categoryFilter }) {
+export default function DocumentList({ searchQuery, categoryFilter, onEditDocument }) {
   const { documents, loading } = useDocuments();
   const { colorScheme } = useThemeMode();
   const isDarkMode = colorScheme === 'dark';
@@ -46,7 +46,13 @@ export default function DocumentList({ searchQuery, categoryFilter }) {
     <View style={{ flex: 1, backgroundColor: isDarkMode ? '#181926' : 'transparent' }}>
       <FlatList
         data={filteredDocuments}
-        renderItem={({ item }) => <DocumentCard document={item} colors={colors} />}
+        renderItem={({ item }) => (
+          <DocumentCard 
+            document={item} 
+            colors={colors} 
+            onEdit={onEditDocument}
+          />
+        )}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContainer}
         ListEmptyComponent={
