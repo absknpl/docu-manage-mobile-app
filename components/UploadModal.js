@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -18,6 +18,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import * as DocumentPicker from 'expo-document-picker';
 import { TAG_ICONS, TAGS } from './TagIcons';
 import { useThemeMode } from '../contexts/ThemeContext';
+import { Animated, Easing } from 'react-native';
 
 export default function UploadModal({ visible, onClose, onSubmit, editDocument }) {
   const { colorScheme } = useThemeMode();
@@ -31,6 +32,12 @@ export default function UploadModal({ visible, onClose, onSubmit, editDocument }
   const [dateWarning, setDateWarning] = useState(false);
   const [noExpiration, setNoExpiration] = useState(false);
 
+  // Animation values
+  const buttonShine = useRef(new Animated.Value(-100)).current;
+  const buttonScale = useRef(new Animated.Value(1)).current;
+  const formOpacity = useRef(new Animated.Value(0)).current;
+  const formTranslateY = useRef(new Animated.Value(20)).current;
+
   // If editDocument is provided, prefill the form
   useEffect(() => {
     if (visible && editDocument) {
@@ -43,6 +50,66 @@ export default function UploadModal({ visible, onClose, onSubmit, editDocument }
       resetForm();
     }
   }, [visible, editDocument]);
+
+  // Check if form is valid
+  const isFormValid = file && title.trim();
+
+  // Shine animation for submit button
+  const startShineAnimation = () => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(buttonShine, {
+          toValue: 200,
+          duration: 1500,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+        Animated.timing(buttonShine, {
+          toValue: -100,
+          duration: 0,
+          useNativeDriver: true,
+        })
+      ])
+    ).start();
+  };
+
+  // Stop shine animation
+  const stopShineAnimation = () => {
+    buttonShine.setValue(-100);
+    buttonShine.stopAnimation();
+  };
+
+  // Handle shine animation based on form validity
+  useEffect(() => {
+    if (isFormValid) {
+      startShineAnimation();
+    } else {
+      stopShineAnimation();
+    }
+  }, [isFormValid]);
+
+  // Form enter animation
+  useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.timing(formOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(formTranslateY, {
+          toValue: 0,
+          duration: 400,
+          easing: Easing.out(Easing.back(0.8)),
+          useNativeDriver: true,
+        })
+      ]).start();
+    } else {
+      // Reset animations when modal closes
+      formOpacity.setValue(0);
+      formTranslateY.setValue(20);
+    }
+  }, [visible]);
 
   const pickDocument = async () => {
     try {
@@ -66,6 +133,20 @@ export default function UploadModal({ visible, onClose, onSubmit, editDocument }
   };
 
   const handleSubmit = async () => {
+    // Add button press animation
+    await Animated.sequence([
+      Animated.spring(buttonScale, {
+        toValue: 0.95,
+        useNativeDriver: true,
+      }),
+      Animated.spring(buttonScale, {
+        toValue: 1,
+        friction: 3,
+        tension: 40,
+        useNativeDriver: true,
+      })
+    ]).start();
+
     const today = new Date();
     today.setHours(0,0,0,0);
     const selected = new Date(date);
@@ -172,7 +253,15 @@ export default function UploadModal({ visible, onClose, onSubmit, editDocument }
             style={styles.background} 
             onPress={handleModalClose} 
           />
-          <View style={styles.modalContainer}>
+          <Animated.View 
+            style={[
+              styles.modalContainer,
+              {
+                opacity: formOpacity,
+                transform: [{ translateY: formTranslateY }]
+              }
+            ]}
+          >
             <View style={styles.header}>
               <Text style={styles.title}>{editDocument ? 'Edit Document' : 'Upload Document'}</Text>
               <TouchableOpacity onPress={handleModalClose}>
@@ -321,16 +410,55 @@ export default function UploadModal({ visible, onClose, onSubmit, editDocument }
                   ]}
                   onPress={handleSubmit}
                   disabled={!file || !title.trim() || isLoading}
+                  activeOpacity={0.7}
                 >
+                  {/* Shine effect overlay */}
+                  {isFormValid && !isLoading && (
+                    <Animated.View 
+  style={[
+    StyleSheet.absoluteFill,
+    {
+      backgroundColor: 'rgba(255, 255, 255, 0.4)', // Semi-transparent white
+      width: 30, // Thinner width (was 70)
+      left: undefined,
+      right: undefined,
+      top: -10, // Extend slightly beyond bounds
+      bottom: -10, // Extend slightly beyond bounds
+      transform: [
+        { 
+          translateX: buttonShine.interpolate({
+            inputRange: [-100, 200],
+            outputRange: [-100, 200]
+          }) 
+        },
+        { rotate: '20deg' } // Less steep angle (was 100deg)
+      ],
+      // Shadow effects for soft glow
+      shadowColor: '#fff',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 4,
+      // Optional border radius if you want rounded edges
+      borderRadius: 2,
+    }
+  ]}
+/>
+                  )}
                   {isLoading ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text style={styles.submitBtnText}>{isLoading ? '' : (editDocument ? 'Save Changes' : 'Upload')}</Text>
+                    <Animated.Text style={[
+                      styles.submitBtnText,
+                      { transform: [{ scale: buttonScale }] }
+                    ]}>
+                      {editDocument ? 'Save Changes' : 'Upload'}
+                    </Animated.Text>
                   )}
                 </TouchableOpacity>
               </View>
             </ScrollView>
-          </View>
+          </Animated.View>
         </KeyboardAvoidingView>
       </View>
     </Modal>
@@ -490,6 +618,9 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 12,
     alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden', // Important for shine effect
+    position: 'relative', // For absolute positioning of shine
   },
   disabledBtn: {
     opacity: 0.6,

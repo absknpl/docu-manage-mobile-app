@@ -16,7 +16,6 @@ import * as Notifications from "expo-notifications";
 import { useThemeMode } from "../contexts/ThemeContext";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDocuments } from "../contexts/DocumentsContext";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { useNavigation } from '@react-navigation/native';
 
 const NotificationItem = ({ item, index, onAction, onTimeChange, isPop }) => {
@@ -26,21 +25,7 @@ const NotificationItem = ({ item, index, onAction, onTimeChange, isPop }) => {
   const translateX = useRef(new Animated.Value(0)).current;
   const [isExpanded, setIsExpanded] = useState(false);
   const [isSwiping, setIsSwiping] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
-  const [selectedTime, setSelectedTime] = useState(
-    item.trigger?.value ? new Date(item.trigger.value) : new Date()
-  );
   const navigation = useNavigation();
-
-  // Set default time to 9:00 AM if not set
-  React.useEffect(() => {
-    if (!item.trigger?.value) {
-      const defaultTime = new Date();
-      defaultTime.setHours(9, 0, 0, 0);
-      setSelectedTime(defaultTime);
-      onTimeChange(item.id, defaultTime);
-    }
-  }, []);
 
   // PanResponder for smooth, controlled swipe
   const panResponder = useRef(
@@ -339,53 +324,32 @@ const NotificationItem = ({ item, index, onAction, onTimeChange, isPop }) => {
                   }}
                 >
                   <Feather name="trash-2" size={16} color="#ef4444" />
-                  <Text style={[styles.actionButtonText, { color: "#ef4444" }]}>
-                    Delete
+                  <Text style={[styles.actionButtonText, { color: "#ef4444" }]}>Delete</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.reminderContainer}>
+                <TouchableOpacity
+                  style={styles.reminderButton}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    // Schedule reminder for next day at 9 AM
+                    const tomorrowAt9AM = new Date();
+                    tomorrowAt9AM.setDate(tomorrowAt9AM.getDate() + 1);
+                    tomorrowAt9AM.setHours(9, 0, 0, 0);
+                    onTimeChange(item.id, tomorrowAt9AM);
+                  }}
+                >
+                  <Feather
+                    name="clock"
+                    size={16}
+                    color={colorScheme === "dark" ? "#94a3b8" : "#64748b"}
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text style={styles.reminderText}>
+                    Remind me tomorrow at 9:00 AM
                   </Text>
                 </TouchableOpacity>
               </View>
-              <TouchableOpacity
-                style={{
-                  marginTop: 10,
-                  alignSelf: "flex-start",
-                  flexDirection: "row",
-                  alignItems: "center",
-                }}
-                onPress={() => setShowTimePicker(true)}
-              >
-                <Feather
-                  name="clock"
-                  size={16}
-                  color="#6366f1"
-                  style={{ marginRight: 6 }}
-                />
-                <Text
-                  style={{ color: "#6366f1", fontWeight: "500", fontSize: 14 }}
-                >
-                  Set Notification Time:{" "}
-                  {selectedTime.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </Text>
-              </TouchableOpacity>
-              {showTimePicker && (
-                <DateTimePicker
-                  value={selectedTime}
-                  mode="time"
-                  is24Hour={true}
-                  display="default"
-                  textColor={colorScheme === "dark" ? "#f8fafc" : "#1e293b"}
-                  accentColor={colorScheme === "dark" ? "#6366f1" : "#2563eb"}
-                  onChange={(event, date) => {
-                    setShowTimePicker(false);
-                    if (date) {
-                      setSelectedTime(date);
-                      onTimeChange(item.id, date);
-                    }
-                  }}
-                />
-              )}
             </>
           )}
         </TouchableOpacity>
@@ -510,29 +474,29 @@ export default function NotificationsScreen({ navigation }) {
     if (notif) {
       // Cancel old notification
       await Notifications.cancelScheduledNotificationAsync(id);
-      // Schedule new notification at selected time (today or next day if time has passed)
-      let now = new Date();
-      let scheduledDate = new Date(now);
-      scheduledDate.setHours(newTime.getHours(), newTime.getMinutes(), 0, 0);
-      if (scheduledDate < now) {
-        scheduledDate.setDate(scheduledDate.getDate() + 1);
-      }
+      // Schedule new notification at 9 AM
       const newId = await Notifications.scheduleNotificationAsync({
         content: {
           title: notif.title,
           body: notif.message,
           sound: true,
         },
-        trigger: { type: 'date', date: scheduledDate }, // Use correct trigger format
+        trigger: { type: 'date', date: newTime },
       });
-      // Update state to reflect new notification id and time
+      // Update state to reflect new notification
       setNotifications((prev) =>
         prev.map((n) =>
           n.id === id
-            ? { ...n, id: newId, trigger: { value: scheduledDate } }
+            ? { 
+                ...n, 
+                id: newId, 
+                trigger: { value: newTime },
+                read: false // Mark as unread when reminded
+              }
             : n
         )
       );
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
   };
 
@@ -872,5 +836,22 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     backgroundColor: "rgba(239, 68, 68, 0.1)",
+  },
+  reminderContainer: {
+    marginTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(0,0,0,0.1)',
+    paddingTop: 12,
+  },
+  reminderButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+  },
+  reminderText: {
+    // Use a function to access colorScheme from props or context
+    color: '#64748b', // fallback default
+    fontWeight: "500",
+    fontSize: 14,
   },
 });

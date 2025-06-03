@@ -368,24 +368,32 @@ export default function SettingsScreen() {
               ios_backgroundColor="#e2e8f0"
             />
           </SettingsItem>
-          <SettingsItem 
-            icon="clock" 
-            label="Notification Time" 
-            value={tempNotificationTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            onPress={notificationEnabled ? () => setShowTimePicker(true) : undefined}
-          >
-            <TouchableOpacity
-              onPress={notificationEnabled ? () => setShowTimePicker(true) : undefined}
-              activeOpacity={notificationEnabled ? 0.7 : 1}
-              style={{ flexDirection: 'row', alignItems: 'center', opacity: notificationEnabled ? 1 : 0.4 }}
-              disabled={!notificationEnabled}
-            >
-              <Feather name="clock" size={18} color={notificationEnabled ? '#6366f1' : '#bfc6e6'} style={{ marginRight: 6 }} />
-              <Text style={{ fontSize: 16, color: notificationEnabled ? (colorScheme === 'dark' ? '#8aadf4' : '#6366f1') : '#bfc6e6', fontWeight: '500' }}>
-                {tempNotificationTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </Text>
-            </TouchableOpacity>
-          </SettingsItem>
+         <SettingsItem 
+  icon="clock" 
+  label="Notification Time" 
+  onPress={notificationEnabled ? () => setShowTimePicker(true) : undefined}
+>
+  <TouchableOpacity
+    onPress={notificationEnabled ? () => setShowTimePicker(true) : undefined}
+    activeOpacity={notificationEnabled ? 0.7 : 1}
+    style={{ flexDirection: 'row', alignItems: 'center', opacity: notificationEnabled ? 1 : 0.4 }}
+    disabled={!notificationEnabled}
+  >
+    <Feather 
+      name="clock" 
+      size={18} 
+      color={notificationEnabled ? (colorScheme === 'dark' ? '#8aadf4' : '#6366f1') : '#bfc6e6'} 
+      style={{ marginRight: 6 }} 
+    />
+    <Text style={[
+      styles.timeText,
+      colorScheme === 'dark' && styles.timeTextDark,
+      !notificationEnabled && styles.timeTextDisabled
+    ]}>
+      {tempNotificationTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+    </Text>
+  </TouchableOpacity>
+</SettingsItem>
           <SettingsItem
             icon="calendar"
             label="Remind Me Before"
@@ -766,5 +774,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(180, 180, 180, 0.25)',
     borderRadius: 10,
     zIndex: 10,
+  },
+  timeText: {
+    fontSize: 16,
+    color: '#6366f1',
+    fontWeight: '500',
+  },
+  timeTextDark: {
+    color: '#8aadf4',
+  },
+  timeTextDisabled: {
+    color: '#bfc6e6',
   },
 });
