@@ -4,98 +4,97 @@ import {
   Text, 
   StyleSheet, 
   TouchableOpacity, 
-  FlatList, 
   Platform,
   Animated,
   Easing,
   Dimensions,
   SafeAreaView,
-  Image,
   StatusBar
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { useThemeMode } from '../contexts/ThemeContext';
 
 const { width, height } = Dimensions.get('window');
-const FEATURES = [
-  { icon: 'lock', text: 'Bank-grade encryption for all documents' },
-  { icon: 'bell', text: 'Smart expiry reminders & notifications' },
-  { icon: 'search', text: 'Instant search with AI suggestions' },
-  { icon: 'tag', text: 'Organize with custom tags & categories' },
-  { icon: 'bar-chart-2', text: 'Visual analytics & document timelines' },
-];
 
-export default function SplashScreen({ navigation, forceShow }) {
+export default function SplashScreen({ navigation }) {
   const [buttonScale] = useState(new Animated.Value(1));
   const fadeAnim = useState(new Animated.Value(0))[0];
-  const slideUpAnim = useState(new Animated.Value(30))[0];
-  const [isFirstLaunch, setIsFirstLaunch] = useState(null);
+  const logoScale = useState(new Animated.Value(0.8))[0];
+  const titleSlide = useState(new Animated.Value(20))[0];
+  const subtitleFade = useState(new Animated.Value(0))[0];
+  const buttonFade = useState(new Animated.Value(0))[0];
+  
   const { colorScheme, theme } = useThemeMode();
   const isPop = colorScheme === 'pop';
 
   useEffect(() => {
-    const checkFirstLaunch = async () => {
-      try {
-        if (forceShow) {
-          setIsFirstLaunch(true);
-          Animated.parallel([
-            Animated.timing(fadeAnim, {
-              toValue: 1,
-              duration: 800,
-              useNativeDriver: true,
-            }),
-            Animated.timing(slideUpAnim, {
-              toValue: 0,
-              duration: 1000,
-              easing: Easing.out(Easing.back(1)),
-              useNativeDriver: true,
-            })
-          ]).start();
-          return;
-        }
-        // Always check AsyncStorage for first launch on every mount
-        const hasLaunched = await AsyncStorage.getItem('@hasLaunched');
-        if (hasLaunched === null) {
-          // First launch on any OS: show splash
-          setIsFirstLaunch(true);
-          await AsyncStorage.setItem('@hasLaunched', 'true');
-          Animated.parallel([
-            Animated.timing(fadeAnim, {
-              toValue: 1,
-              duration: 800,
-              useNativeDriver: true,
-            }),
-            Animated.timing(slideUpAnim, {
-              toValue: 0,
-              duration: 1000,
-              easing: Easing.out(Easing.back(1)),
-              useNativeDriver: true,
-            })
-          ]).start();
-        } else {
-          // Not first launch: skip splash
-          if (navigation && typeof navigation.replace === 'function') {
-            navigation.replace('Main');
-          }
-        }
-      } catch (error) {
-        console.error('Error checking first launch:', error);
-        setIsFirstLaunch(true); // Default to showing welcome screen if error occurs
-      }
-    };
+    // Animation sequence for splash screen elements
+    Animated.parallel([
+      // Logo animation (gentle scale + fade)
+      Animated.sequence([
+        Animated.spring(logoScale, {
+          toValue: 1.05,
+          friction: 4,
+          useNativeDriver: true,
+          delay: 100,
+        }),
+        Animated.spring(logoScale, {
+          toValue: 1,
+          friction: 7,
+          tension: 40,
+          useNativeDriver: true,
+        })
+      ]),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      // Title slide up
+      Animated.timing(titleSlide, {
+        toValue: 0,
+        duration: 800,
+        easing: Easing.out(Easing.back(0.8)),
+        useNativeDriver: true,
+        delay: 150,
+      }),
+      // Subtitle fade in
+      Animated.timing(subtitleFade, {
+        toValue: 1,
+        duration: 600,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+        delay: 300,
+      }),
+      // Button fade in
+      Animated.timing(buttonFade, {
+        toValue: 1,
+        duration: 600,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+        delay: 450,
+      })
+    ]).start();
 
-    checkFirstLaunch();
-  }, [navigation, forceShow]);
+    // Always navigate after 1 second
+    const timeout = setTimeout(() => {
+      if (navigation && typeof navigation.replace === 'function') {
+        navigation.replace('Main');
+      }
+    }, 1000);
+
+    return () => clearTimeout(timeout);
+  }, []);
 
   const handleLetsGo = async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
     Animated.sequence([
       Animated.spring(buttonScale, {
-        toValue: 0.95,
+        toValue: 0.96,
         useNativeDriver: true,
       }),
       Animated.spring(buttonScale, {
@@ -111,24 +110,7 @@ export default function SplashScreen({ navigation, forceShow }) {
     });
   };
 
-  const renderFeatureItem = ({ item }) => (
-    <View style={styles.featureItem}>
-      <View style={styles.featureIconContainer}>
-        <Feather name={item.icon} size={20} color="#3b82f6" />
-      </View>
-      <Text style={styles.featureText}>{item.text}</Text>
-    </View>
-  );
-
-  if (isFirstLaunch === null) {
-    return null; // Show nothing while checking first launch status
-  }
-
-  if (!isFirstLaunch) {
-    return null; // Will be quickly replaced by navigation
-  }
-
-  // Determine background color for SafeAreaView and StatusBar
+  // Determine background colors
   const safeBg = isPop ? theme.faded : colorScheme === 'dark' ? '#0f172a' : '#f8fafc';
   const statusBarBg = isPop ? theme.primary : colorScheme === 'dark' ? '#0f172a' : '#f8fafc';
   const statusBarStyle = isPop ? 'light' : colorScheme === 'dark' ? 'light' : 'dark';
@@ -140,8 +122,12 @@ export default function SplashScreen({ navigation, forceShow }) {
         colors={isPop ? [theme.primary, theme.faded] : colorScheme === 'dark' ? ['#0f172a', '#1e293b'] : ['#f8fafc', '#f1f5f9']}
         style={styles.container}
       >
-        <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideUpAnim }] }]}> 
-          <View style={styles.logoContainer}>
+        <View style={styles.content}>
+          {/* Logo with scale animation */}
+          <Animated.View style={[styles.logoContainer, { 
+            opacity: fadeAnim,
+            transform: [{ scale: logoScale }] 
+          }]}>
             <LinearGradient
               colors={['#3b82f6', '#2563eb']}
               style={styles.logo}
@@ -150,13 +136,36 @@ export default function SplashScreen({ navigation, forceShow }) {
             >
               <Feather name="box" size={48} color="white" />
             </LinearGradient>
-          </View>
-          <Text style={styles.title}>Welcome to Arkive</Text>
-          <Text style={styles.subtitle}>Your personal document fortress</Text>
+          </Animated.View>
           
-          <Animated.View style={{ transform: [{ scale: buttonScale }], marginTop: -8 }}>
+          {/* Title with slide up animation */}
+          <Animated.Text style={[
+            styles.title,
+            { 
+              opacity: fadeAnim,
+              transform: [{ translateY: titleSlide }] 
+            }
+          ]}>
+            Welcome to Arkive
+          </Animated.Text>
+          
+          {/* Subtitle with fade animation */}
+          <Animated.Text style={[
+            styles.subtitle,
+            { 
+              opacity: subtitleFade,
+            }
+          ]}>
+            Your personal document fortress
+          </Animated.Text>
+          
+          {/* Button with fade and scale animations */}
+          <Animated.View style={{ 
+            opacity: buttonFade,
+            transform: [{ scale: buttonScale }] 
+          }}>
             <TouchableOpacity 
-              style={[styles.button, { marginTop: 0 }]} 
+              style={styles.button} 
               onPress={handleLetsGo} 
               activeOpacity={0.8}
             >
@@ -171,19 +180,16 @@ export default function SplashScreen({ navigation, forceShow }) {
               </LinearGradient>
             </TouchableOpacity>
           </Animated.View>
-        </Animated.View>
+        </View>
       </LinearGradient>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
   safeArea: {
     flex: 1,
-    backgroundColor: '#f8fafc', // will be overridden dynamically
+    backgroundColor: '#f8fafc',
   },
   container: {
     flex: 1,
@@ -191,7 +197,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 32,
     width: '100%',
-    height: '100%',
   },
   content: {
     width: '100%',
@@ -232,49 +237,6 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     paddingHorizontal: 8,
   },
-  featuresBox: {
-    width: '100%',
-    maxWidth: 600,
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 32,
-    width: '94%', // Increased width for better readability
-    alignSelf: 'center', // Center the box
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 16,
-    elevation: 4,
-  },
-  featuresTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 16,
-    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
-  },
-  featureItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  featureIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  featureText: {
-    fontSize: 16,
-    color: '#334155',
-    flex: 1,
-    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
-    lineHeight: 24,
-  },
   button: {
     width: width - 64,
     borderRadius: 14,
@@ -301,13 +263,5 @@ const styles = StyleSheet.create({
   },
   buttonIcon: {
     marginLeft: 10,
-  },
-  footerText: {
-    position: 'absolute',
-    bottom: 40,
-    color: '#94a3b8',
-    fontSize: 14,
-    fontWeight: '500',
-    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
   },
 });
