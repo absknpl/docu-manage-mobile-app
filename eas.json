@@ -1,0 +1,32 @@
+{
+  "cli": {
+    "version": ">= 16.7.0",
+    "appVersionSource": "remote"
+  },
+  "android": { "enableProguardInReleaseBuilds": true },
+  "ios": {
+    "bundleIdentifier": "com.arkive",
+    "buildNumber": "1.0.0",
+    "supportsTablet": true,
+    "infoPlist": {
+      "UIBackgroundModes": ["fetch", "remote-notification"],
+      "NSPhotoLibraryUsageDescription": "This app requires access to your photo library to save and share images.",
+      "NSCameraUsageDescription": "This app requires access to your camera to take photos."
+    }
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {
+      "autoIncrement": true
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

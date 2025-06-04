@@ -16,6 +16,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
 import { TAG_ICONS, TAGS } from './TagIcons';
 import { useThemeMode } from '../contexts/ThemeContext';
 import { Animated, Easing } from 'react-native';
@@ -130,6 +131,77 @@ export default function UploadModal({ visible, onClose, onSubmit, editDocument }
       console.error('Document picker error:', err);
       Alert.alert('Error', 'Failed to select file. Please try again.');
     }
+  };
+
+  // Helper to pick from gallery
+  const pickFromGallery = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 1,
+        allowsEditing: false,
+      });
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setFile({
+          uri: asset.uri,
+          name: asset.fileName || `photo_${Date.now()}.jpg`,
+          size: asset.fileSize || 0,
+          mimeType: asset.type ? `image/${asset.type}` : 'image/jpeg',
+        });
+        if (!title) {
+          setTitle(asset.fileName ? asset.fileName.replace(/\.[^/.]+$/, '') : 'Photo');
+        }
+      }
+    } catch (err) {
+      console.error('Gallery picker error:', err);
+      Alert.alert('Error', 'Failed to select photo. Please try again.');
+    }
+  };
+
+  // Helper to pick from camera
+  const pickFromCamera = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission required', 'Camera permission is required to take a photo.');
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 1,
+        allowsEditing: false,
+      });
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setFile({
+          uri: asset.uri,
+          name: asset.fileName || `camera_${Date.now()}.jpg`,
+          size: asset.fileSize || 0,
+          mimeType: asset.type ? `image/${asset.type}` : 'image/jpeg',
+        });
+        if (!title) {
+          setTitle(asset.fileName ? asset.fileName.replace(/\.[^/.]+$/, '') : 'Camera Photo');
+        }
+      }
+    } catch (err) {
+      console.error('Camera picker error:', err);
+      Alert.alert('Error', 'Failed to take photo. Please try again.');
+    }
+  };
+
+  // Show source selection
+  const handlePickSource = () => {
+    Alert.alert(
+      'Select File Source',
+      'Choose where to upload from:',
+      [
+        { text: 'Files', onPress: pickDocument },
+        { text: 'Photo Gallery', onPress: pickFromGallery },
+        { text: 'Camera', onPress: pickFromCamera },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
   };
 
   const handleSubmit = async () => {
@@ -275,7 +347,7 @@ export default function UploadModal({ visible, onClose, onSubmit, editDocument }
               {/* File Upload Section */}
               <TouchableOpacity 
                 style={styles.uploadArea}
-                onPress={pickDocument}
+                onPress={handlePickSource}
                 activeOpacity={0.7}
               >
                 {file ? (

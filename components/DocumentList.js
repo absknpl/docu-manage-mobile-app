@@ -81,6 +81,7 @@ const styles = StyleSheet.create({
   listContainer: {
     paddingTop: 20,
     gap: 20,
+    paddingBottom: 200, // Added extra bottom padding for better spacing
   },
   emptyState: {
     padding: 30,

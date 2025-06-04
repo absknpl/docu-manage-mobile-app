@@ -6,7 +6,8 @@ import {
   TouchableOpacity, 
   Text,
   Platform,
-  StatusBar
+  StatusBar,
+  ScrollView // Added ScrollView import
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -18,6 +19,8 @@ import UploadModal from '../components/UploadModal';
 import CategoryFilter from '../components/CategoryFilter';
 import { useDocuments } from '../contexts/DocumentsContext';
 import { useThemeMode } from '../contexts/ThemeContext';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useNotificationSettings } from '../contexts/NotificationSettingsContext';
 
 export default function DocumentsScreen() {
   const { colorScheme, theme, getStatusBarStyle } = useThemeMode();
