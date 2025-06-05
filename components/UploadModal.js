@@ -39,6 +39,9 @@ export default function UploadModal({ visible, onClose, onSubmit, editDocument }
   const formOpacity = useRef(new Animated.Value(0)).current;
   const formTranslateY = useRef(new Animated.Value(20)).current;
 
+  // Glow animation for submit button
+  const buttonGlow = useRef(new Animated.Value(0)).current;
+
   // If editDocument is provided, prefill the form
   useEffect(() => {
     if (visible && editDocument) {
@@ -111,6 +114,33 @@ export default function UploadModal({ visible, onClose, onSubmit, editDocument }
       formTranslateY.setValue(20);
     }
   }, [visible]);
+
+  // Glow animation for submit button
+  useEffect(() => {
+    let glowAnim;
+    if (isFormValid) {
+      glowAnim = Animated.loop(
+        Animated.sequence([
+          Animated.timing(buttonGlow, {
+            toValue: 1,
+            duration: 900,
+            useNativeDriver: false,
+          }),
+          Animated.timing(buttonGlow, {
+            toValue: 0,
+            duration: 900,
+            useNativeDriver: false,
+          })
+        ])
+      );
+      glowAnim.start();
+    } else {
+      buttonGlow.setValue(0);
+    }
+    return () => {
+      if (glowAnim) glowAnim.stop();
+    };
+  }, [isFormValid]);
 
   const pickDocument = async () => {
     try {
@@ -475,6 +505,30 @@ export default function UploadModal({ visible, onClose, onSubmit, editDocument }
                 >
                   <Text style={styles.cancelBtnText}>Cancel</Text>
                 </TouchableOpacity>
+                <Animated.View
+                  style={[
+                    styles.glowWrapper,
+                    isFormValid && !isLoading ? {
+                      borderColor: buttonGlow.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['#6366f1', '#a5b4fc']
+                      }),
+                      shadowColor: '#6366f1',
+                      shadowOpacity: buttonGlow.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.3, 0.7]
+                      }),
+                      shadowRadius: buttonGlow.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [8, 16]
+                      }),
+                      elevation: buttonGlow.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [4, 12]
+                      })
+                    } : { borderColor: '#e2e8f0', shadowOpacity: 0, shadowRadius: 0, elevation: 0 }
+                  ]}
+                >
                 <TouchableOpacity 
                   style={[
                     styles.submitBtn,
@@ -490,12 +544,12 @@ export default function UploadModal({ visible, onClose, onSubmit, editDocument }
   style={[
     StyleSheet.absoluteFill,
     {
-      backgroundColor: 'rgba(255, 255, 255, 0.4)', // Semi-transparent white
-      width: 30, // Thinner width (was 70)
+      backgroundColor: 'rgba(255, 255, 255, 0.4)',
+      width: 30,
       left: undefined,
       right: undefined,
-      top: -10, // Extend slightly beyond bounds
-      bottom: -10, // Extend slightly beyond bounds
+      top: -10,
+      bottom: -10,
       transform: [
         { 
           translateX: buttonShine.interpolate({
@@ -503,15 +557,13 @@ export default function UploadModal({ visible, onClose, onSubmit, editDocument }
             outputRange: [-100, 200]
           }) 
         },
-        { rotate: '20deg' } // Less steep angle (was 100deg)
+        { rotate: '20deg' }
       ],
-      // Shadow effects for soft glow
       shadowColor: '#fff',
       shadowOffset: { width: 0, height: 0 },
       shadowOpacity: 0.3,
       shadowRadius: 8,
       elevation: 4,
-      // Optional border radius if you want rounded edges
       borderRadius: 2,
     }
   ]}
@@ -528,6 +580,7 @@ export default function UploadModal({ visible, onClose, onSubmit, editDocument }
                     </Animated.Text>
                   )}
                 </TouchableOpacity>
+                </Animated.View>
               </View>
             </ScrollView>
           </Animated.View>
@@ -668,7 +721,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
     marginBottom: 12,
-    paddingHorizontal: 4,
+    paddingHorizontal: 0, // Changed from 4 to 0
     gap: 10,
   },
   cancelBtn: {
@@ -682,17 +735,31 @@ const styles = StyleSheet.create({
     color: '#64748b',
     fontWeight: '500',
   },
+  glowWrapper: {
+    borderWidth: 2,
+    borderRadius: 8, // Match button
+    flex: 1,
+    alignItems: 'stretch', // Changed from 'center' to 'stretch'
+    justifyContent: 'center',
+    shadowColor: '#FFDA32',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
+    minHeight: 48, // Ensure minimum height matches button
+  },
   submitBtn: {
     paddingVertical: 12,
     paddingHorizontal: 24,
-    borderRadius: 8,
+    borderRadius: 6, // Slightly smaller than wrapper to account for border
     backgroundColor: '#6366f1',
-    flex: 1,
-    marginLeft: 12,
+    width: '100%', // Fill wrapper
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden', // Important for shine effect
-    position: 'relative', // For absolute positioning of shine
+    overflow: 'hidden',
+    position: 'relative',
+    opacity: 0.92,
+    minHeight: 44, // Ensure minimum height
   },
   disabledBtn: {
     opacity: 0.6,
