@@ -8,7 +8,7 @@
 
 **Arkive** is a next-generation, cross-platform document management app designed to help you organize, track, and never miss a deadline for your most important files. Built with React Native, Arkive delivers a seamless, beautiful, and highly functional experience on both iOS and Android devices.
 
-## Version : 1.0.0.0
+## Version : 1.0.0
 
 ## Features
 
