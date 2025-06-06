@@ -10,7 +10,8 @@ import {
   Easing,
   Platform,
   ScrollView,
-  StatusBar
+  StatusBar,
+  Share
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -18,11 +19,12 @@ import { useThemeMode } from '../contexts/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNotificationSettings } from '../contexts/NotificationSettingsContext';
 import SplashScreenComponent from '../components/SplashScreen';
-import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { useDocuments } from '../contexts/DocumentsContext';
 import * as Notifications from 'expo-notifications';
+import * as Sharing from 'expo-sharing';
 
+const fireworkPattern = [0, 80, 120, 40, 40, 40, 40, 40, 40, 40, 40, 40];
 const themeOptions = [
   { label: 'Pop', value: 'pop', icon: 'zap' },
   { label: 'Light', value: 'light', icon: 'sun' },
@@ -173,13 +175,43 @@ export default function SettingsScreen() {
 
   const handlePrivacy = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Linking.openURL('https://abisek.dev/arkive/privacy');
+    Linking.openURL('https://abisek.dev/arkive-privacy');
   };
 
-  const handleRate = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Linking.openURL('https://abisek.dev/arkive/rate');
-  };
+const handleRate = () => {
+  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  
+  // Platform-specific app store URLs
+  const appStoreUrl = 'itms-apps://itunes.apple.com/app/[YOUR_APP_ID]?action=write-review';
+  const playStoreUrl = 'market://details?id=[YOUR_PACKAGE_NAME]';
+  
+  // Fallback URLs in case the app store app isn't available
+  const appStoreWebUrl = 'https://apps.apple.com/app/[YOUR_APP_ID]?action=write-review';
+  const playStoreWebUrl = 'https://play.google.com/store/apps/details?id=[YOUR_PACKAGE_NAME]';
+
+  const url = Platform.select({
+    ios: appStoreUrl,
+    android: playStoreUrl,
+    default: 'https://abisek.dev/arkive' // Fallback for other platforms
+  });
+
+  const webUrl = Platform.select({
+    ios: appStoreWebUrl,
+    android: playStoreWebUrl,
+    default: 'https://abisek.dev/arkive'
+  });
+
+  Linking.canOpenURL(url).then(supported => {
+    if (supported) {
+      return Linking.openURL(url);
+    } else {
+      return Linking.openURL(webUrl);
+    }
+  }).catch(err => {
+    console.error('Error opening app store:', err);
+    Linking.openURL('https://abisek.dev/arkive'); // Ultimate fallback
+  });
+};
 
   const toggleNotifications = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -217,11 +249,11 @@ export default function SettingsScreen() {
 
   // Export documents as CSV (title, expiration date, tag, etc.)
   const handleExportCSV = async () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); // Haptic feedback on export
     if (!documents || documents.length === 0) {
       alert('No documents to export.');
       return;
     }
-    // Prepare CSV header and rows
     const header = ['Title', 'Expiration Date', 'Tag'];
     const rows = documents.map(doc => [
       `"${doc.title || ''}"`,
@@ -229,11 +261,32 @@ export default function SettingsScreen() {
       doc.tag || ''
     ]);
     const csv = [header, ...rows].map(row => row.join(',')).join('\n');
-    // Write to a temporary file
     const fileUri = FileSystem.cacheDirectory + `arkive_export_${Date.now()}.csv`;
     await FileSystem.writeAsStringAsync(fileUri, csv, { encoding: FileSystem.EncodingType.UTF8 });
-    // Share the file
-    await Sharing.shareAsync(fileUri, { mimeType: 'text/csv', dialogTitle: 'Export Documents CSV' });
+    if (await Sharing.isAvailableAsync()) {
+      await Sharing.shareAsync(fileUri, { mimeType: 'text/csv', dialogTitle: 'Export Documents CSV' });
+    } else {
+      alert('Sharing is not available on this device.');
+    }
+  };
+
+  const handleShare = async (e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    try {
+      const url = 'https://www.abisek.dev/arkive';
+      const message = `Check out Arkive! Organize your documents and never miss an expiration. ${url}`;
+      await Share.share(
+        Platform.select({
+          ios: { url, message },
+          android: { message },
+          default: { message },
+        })
+      );
+    } catch (error) {
+      console.log('Error sharing:', error);
+      Linking.openURL('https://www.abisek.dev/arkive');
+    }
   };
 
   React.useEffect(() => {
@@ -500,10 +553,16 @@ export default function SettingsScreen() {
             isLast={true}
           />
           <SettingsItem 
+            icon="gift" 
+            label="Share with Friends" 
+            onPress={handleShare}
+          />
+          <SettingsItem 
             icon="download" 
             label="Export Data (CSV)" 
             onPress={handleExportCSV}
           />
+
         </View>
         <View style={styles.footer}>
           <Text style={[styles.footerText, colorScheme === 'dark' && { color: '#8aadf4' }]}>Made with <Feather name="heart" size={14} color="#f43f5e" /> by Abhishek</Text>

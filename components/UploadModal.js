@@ -11,7 +11,9 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Alert
+  Alert,
+  Animated,
+  Easing
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -19,7 +21,53 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { TAG_ICONS, TAGS } from './TagIcons';
 import { useThemeMode } from '../contexts/ThemeContext';
-import { Animated, Easing } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+
+// Create an animated version of LinearGradient
+const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
+
+// Animated gradient header component
+const AnimatedGradientHeader = ({ title, onClose, editDocument }) => {
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.timing(progress, {
+        toValue: 1,
+        duration: 10000, // Slower animation
+        easing: Easing.linear,
+        useNativeDriver: false, // <-- Fix: always use false for JS-driven style props
+      })
+    ).start();
+  }, []);
+
+  // Animate the gradient's position by shifting the gradient horizontally
+  const translateX = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 60] // px shift for subtle movement
+  });
+
+  return (
+    <View style={styles.header}>
+      <AnimatedLinearGradient
+        colors={['#6366f1', '#8b5cf6', '#6366f1']}
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
+        locations={[0, 0.5, 1]}
+        style={[
+          StyleSheet.absoluteFill,
+          // Remove transform so only the gradient animates, not the content
+        ]}
+      />
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', position: 'relative', zIndex: 1 }}>
+        <Text style={styles.title}>{editDocument ? 'Edit Document' : 'Upload Document'}</Text>
+        <TouchableOpacity onPress={onClose}>
+          <Feather name="x" size={24} color="#fff" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+};
 
 export default function UploadModal({ visible, onClose, onSubmit, editDocument }) {
   const { colorScheme } = useThemeMode();
@@ -41,6 +89,9 @@ export default function UploadModal({ visible, onClose, onSubmit, editDocument }
 
   // Glow animation for submit button
   const buttonGlow = useRef(new Animated.Value(0)).current;
+
+  // Gradient animation for header
+  const gradientAnim = useRef(new Animated.Value(0)).current;
 
   // If editDocument is provided, prefill the form
   useEffect(() => {
@@ -141,6 +192,22 @@ export default function UploadModal({ visible, onClose, onSubmit, editDocument }
       if (glowAnim) glowAnim.stop();
     };
   }, [isFormValid]);
+
+  // Gradient animation effect
+  useEffect(() => {
+    if (visible) {
+      Animated.loop(
+        Animated.timing(gradientAnim, {
+          toValue: 1,
+          duration: 4000,
+          easing: Easing.linear,
+          useNativeDriver: false, // Can't animate start/end with native driver
+        })
+      ).start();
+    } else {
+      gradientAnim.setValue(0);
+    }
+  }, [visible]);
 
   const pickDocument = async () => {
     try {
@@ -364,12 +431,11 @@ export default function UploadModal({ visible, onClose, onSubmit, editDocument }
               }
             ]}
           >
-            <View style={styles.header}>
-              <Text style={styles.title}>{editDocument ? 'Edit Document' : 'Upload Document'}</Text>
-              <TouchableOpacity onPress={handleModalClose}>
-                <Feather name="x" size={24} color="#fff" />
-              </TouchableOpacity>
-            </View>
+            <AnimatedGradientHeader 
+              title={editDocument ? 'Edit Document' : 'Upload Document'}
+              onClose={handleModalClose}
+              editDocument={editDocument}
+            />
             <ScrollView 
               contentContainerStyle={styles.content}
               keyboardShouldPersistTaps="handled"
@@ -605,15 +671,17 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 16,
     maxHeight: '90%',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#6366f1',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-  },
+header: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  padding: 16,
+  borderTopLeftRadius: 16,
+  borderTopRightRadius: 16,
+  overflow: 'hidden',
+  position: 'relative', // Add this
+  height: 60, // Set a fixed height
+},
   title: {
     fontSize: 18,
     fontWeight: '600',
