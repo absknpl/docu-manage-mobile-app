@@ -1,205 +1,377 @@
-import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  Modal, 
-  Image, 
-  ActivityIndicator, 
-  StyleSheet, 
-  TouchableOpacity, 
-  Linking 
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  TouchableOpacity,
+  ScrollView,
+  Platform,
+  Share,
+  Image,
+  Dimensions,
+  Animated,
+  Easing
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { Feather, MaterialIcons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system';
+import Pdf from 'react-native-pdf';
+import { format } from 'date-fns';
+import { useThemeMode } from '../contexts/ThemeContext';
+import { TAG_ICONS } from './TagIcons';
+import { BlurView } from 'expo-blur';
 
-export default function DocumentViewer({ document, visible, onClose }) {
-  const [isLoading, setIsLoading] = useState(true);
+const DocumentViewer = ({ document, onClose, onEdit, onDelete }) => {
+  const { colorScheme, theme } = useThemeMode();
+  const [fileType, setFileType] = useState(null);
+  const [fileUri, setFileUri] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
 
-  const handleDownload = () => {
-    if (document?.file?.uri) {
-      Linking.openURL(document.file.uri);
-    } else {
-      alert('No file to download.');
+  useEffect(() => {
+    // Determine file type and prepare URI
+    const determineFileType = async () => {
+      try {
+        let uri = document.file.uri;
+        
+        // For iOS, we might need to copy the file to a readable location
+        if (Platform.OS === 'ios' && !uri.startsWith('file://')) {
+          const newPath = `${FileSystem.cacheDirectory}${document.file.name}`;
+          await FileSystem.copyAsync({ from: uri, to: newPath });
+          uri = newPath;
+        }
+        
+        setFileUri(uri);
+        
+        if (document.file.type.includes('pdf')) {
+          setFileType('pdf');
+        } else if (document.file.type.includes('image')) {
+          setFileType('image');
+        } else {
+          setFileType('unknown');
+        }
+        
+        setLoading(false);
+      } catch (err) {
+        console.error('Error preparing file:', err);
+        setError('Failed to load document');
+        setLoading(false);
+      }
+    };
+
+    determineFileType();
+
+    // Animation on mount
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 400,
+        easing: Easing.out(Easing.back(0.8)),
+        useNativeDriver: true,
+      })
+    ]).start();
+  }, []);
+
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        url: fileUri,
+        title: document.title,
+        message: `Check out this document: ${document.title}`,
+      });
+    } catch (err) {
+      console.error('Error sharing:', err);
     }
   };
 
-  // Helper to check file type
-  const isImage = document?.file?.type?.includes('image');
-  const isPDF = document?.file?.type?.includes('pdf');
-  const isSupported = isImage;
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.accent} />
+        </View>
+      );
+    }
+
+    if (error) {
+      return (
+        <View style={styles.errorContainer}>
+          <MaterialIcons name="error-outline" size={48} color={theme.error} />
+          <Text style={[styles.errorText, { color: theme.text }]}>{error}</Text>
+        </View>
+      );
+    }
+
+    if (fileType === 'pdf') {
+      return (
+        <Pdf
+          source={{ uri: fileUri, cache: true }}
+          style={styles.pdf}
+          enablePaging={true}
+          enableRTL={false}
+          fitPolicy={0}
+          minScale={1.0}
+          maxScale={3.0}
+          spacing={0}
+          onLoadComplete={(numberOfPages) => {
+            console.log(`Number of pages: ${numberOfPages}`);
+          }}
+          onError={(err) => {
+            console.error('PDF error:', err);
+            setError('Failed to load PDF');
+          }}
+        />
+      );
+    }
+
+    if (fileType === 'image') {
+      return (
+        <ScrollView 
+          maximumZoomScale={3}
+          minimumZoomScale={1}
+          contentContainerStyle={styles.imageContainer}
+        >
+          <Image
+            source={{ uri: fileUri }}
+            style={styles.image}
+            resizeMode="contain"
+            onError={() => setError('Failed to load image')}
+          />
+        </ScrollView>
+      );
+    }
+
+    return (
+      <View style={styles.unsupportedContainer}>
+        <MaterialIcons name="insert-drive-file" size={48} color={theme.icon} />
+        <Text style={[styles.unsupportedText, { color: theme.text }]}>
+          File type not supported for preview
+        </Text>
+      </View>
+    );
+  };
 
   return (
-    <Modal
-      visible={visible}
-      transparent={true}
-      animationType="slide"
-      onRequestClose={onClose}
+    <Animated.View 
+      style={[
+        styles.container,
+        { 
+          backgroundColor: theme.background,
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }]
+        }
+      ]}
     >
-      <View style={styles.overlay}>
-        <View style={styles.container}>
-          <View style={styles.header}>
-            <Text style={styles.title} numberOfLines={1}>
-              {document?.title}
-            </Text>
-            <View style={styles.actions}>
-              <TouchableOpacity 
-                style={styles.downloadBtn}
-                onPress={handleDownload}
+      <SafeAreaView style={styles.safeArea}>
+        {/* Header with document info and actions */}
+        <BlurView intensity={30} tint={colorScheme} style={styles.header}>
+          <View style={styles.headerContent}>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Feather name="chevron-down" size={24} color={theme.text} />
+            </TouchableOpacity>
+            
+            <View style={styles.headerInfo}>
+              <Text 
+                style={[styles.title, { color: theme.text }]} 
+                numberOfLines={1}
+                ellipsizeMode="tail"
               >
-                <Feather name="download" size={18} color="#fff" />
-                <Text style={styles.downloadBtnText}>Open</Text>
+                {document.title}
+              </Text>
+              {document.category && (
+                <View style={styles.categoryBadge}>
+                  {TAG_ICONS[document.category]}
+                  <Text style={[styles.categoryText, { color: theme.accent }]}>
+                    {document.category}
+                  </Text>
+                </View>
+              )}
+            </View>
+            
+            <View style={styles.actionButtons}>
+              <TouchableOpacity onPress={handleShare} style={styles.actionButton}>
+                <Feather name="share-2" size={20} color={theme.text} />
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.closeBtn}
-                onPress={onClose}
-              >
-                <Feather name="x" size={20} color="#1e293b" />
+              <TouchableOpacity onPress={() => onEdit(document)} style={styles.actionButton}>
+                <Feather name="edit-2" size={20} color={theme.text} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => onDelete(document.id)} style={styles.actionButton}>
+                <Feather name="trash-2" size={20} color={theme.error} />
               </TouchableOpacity>
             </View>
           </View>
-          <View style={styles.content}>
-            {isImage ? (
-              <>
-                {isLoading && (
-                  <View style={styles.loading}>
-                    <ActivityIndicator size="large" color="#6366f1" />
-                    <Text style={styles.loadingText}>Loading image...</Text>
-                  </View>
-                )}
-                <Image
-                  source={{ uri: document.file.uri }}
-                  style={styles.image}
-                  onLoad={() => setIsLoading(false)}
-                  resizeMode="contain"
-                />
-              </>
-            ) : (
-              <View style={styles.fallback}>
-                <Feather name={isPDF ? "file-text" : "file"} size={48} color="#64748b" />
-                <Text style={styles.fallbackText}>
-                  {isPDF
-                    ? 'PDF preview is not supported in-app. Tap Open to view in your browser or PDF viewer.'
-                    : 'Preview not available for this file type. Tap Open to view in the appropriate app.'}
+        </BlurView>
+
+        {/* Document content area */}
+        <View style={styles.content}>
+          {renderContent()}
+        </View>
+
+        {/* Footer with metadata */}
+        <BlurView intensity={30} tint={colorScheme} style={styles.footer}>
+          <View style={styles.metadata}>
+            <View style={styles.metaItem}>
+              <Feather name="calendar" size={16} color={theme.icon} />
+              <Text style={[styles.metaText, { color: theme.text }]}>
+                {format(new Date(document.createdAt), 'MMM d, yyyy')}
+              </Text>
+            </View>
+            
+            {document.expirationDate && (
+              <View style={styles.metaItem}>
+                <Feather name="clock" size={16} color={theme.icon} />
+                <Text style={[styles.metaText, { color: theme.text }]}>
+                  Expires: {format(new Date(document.expirationDate), 'MMM d, yyyy')}
                 </Text>
               </View>
             )}
-          </View>
-          <View style={styles.meta}>
-            <Text style={styles.metaText}>
-              <Text style={styles.metaLabel}>Type:</Text> {document?.file?.type || 'Unknown'}
-            </Text>
-            {document?.category && (
-              <Text style={styles.metaText}>
-                <Text style={styles.metaLabel}>Category:</Text> {document.category}
+            
+            <View style={styles.metaItem}>
+              <Feather name="file" size={16} color={theme.icon} />
+              <Text style={[styles.metaText, { color: theme.text }]}>
+                {(document.file.size / (1024 * 1024)).toFixed(2)} MB
               </Text>
-            )}
-            {document?.expirationDate && (
-              <Text style={styles.metaText}>
-                <Text style={styles.metaLabel}>Expires:</Text> 
-                {new Date(document.expirationDate).toLocaleDateString()}
-              </Text>
-            )}
+            </View>
           </View>
-        </View>
-      </View>
-    </Modal>
+        </BlurView>
+      </SafeAreaView>
+    </Animated.View>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
   container: {
-    width: '100%',
-    maxWidth: 800,
-    maxHeight: '90%',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    overflow: 'hidden',
+    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 100,
+  },
+  safeArea: {
+    flex: 1,
   },
   header: {
+    paddingTop: Platform.OS === 'ios' ? 0 : 16,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  headerContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'space-between',
+  },
+  closeButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  headerInfo: {
+    flex: 1,
+    marginHorizontal: 12,
   },
   title: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1e293b',
-    flex: 1,
-    marginRight: 16,
+    textAlign: 'center',
+    marginBottom: 4,
   },
-  actions: {
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'center',
-  },
-  downloadBtn: {
+  categoryBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 6,
-    backgroundColor: '#6366f1',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    alignSelf: 'center',
   },
-  downloadBtnText: {
-    color: '#fff',
+  categoryText: {
+    marginLeft: 6,
+    fontSize: 14,
     fontWeight: '500',
   },
-  closeBtn: {
+  actionButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  actionButton: {
     padding: 8,
-    borderRadius: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    marginLeft: 8,
   },
   content: {
     flex: 1,
-    padding: 16,
+    backgroundColor: '#f8f9fa',
+  },
+  pdf: {
+    flex: 1,
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height,
+  },
+  imageContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    minHeight: 300,
-  },
-  loading: {
-    alignItems: 'center',
-    gap: 16,
-  },
-  loadingText: {
-    color: '#64748b',
   },
   image: {
-    width: '100%',
-    height: 400,
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height * 0.8,
   },
-  fallback: {
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 16,
-    padding: 20,
   },
-  fallbackText: {
-    color: '#64748b',
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  errorText: {
+    marginTop: 16,
+    fontSize: 16,
     textAlign: 'center',
   },
-  meta: {
-    padding: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
-    gap: 8,
+  unsupportedContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  unsupportedText: {
+    marginTop: 16,
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  footer: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(0,0,0,0.1)',
+  },
+  metadata: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   metaText: {
+    marginLeft: 6,
     fontSize: 14,
-    color: '#64748b',
-  },
-  metaLabel: {
-    fontWeight: '600',
-    color: '#1e293b',
+    opacity: 0.8,
   },
 });
+
+export default DocumentViewer;

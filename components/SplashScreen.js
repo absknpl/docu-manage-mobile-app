@@ -3,22 +3,24 @@ import {
   View, 
   Text, 
   StyleSheet, 
-  TouchableOpacity, 
   Platform,
   Animated,
   Easing,
   Dimensions,
   SafeAreaView,
-  StatusBar
+  StatusBar,
+  Image
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Feather } from '@expo/vector-icons';
 import { useThemeMode } from '../contexts/ThemeContext';
+import { useNavigation } from '@react-navigation/native';
+import { Feather } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window');
 
-export default function SplashScreen({ navigation }) {
+export default function SplashScreen(props) {
+  const navigation = useNavigation();
   const [buttonScale] = useState(new Animated.Value(1));
   const fadeAnim = useState(new Animated.Value(0))[0];
   const logoScale = useState(new Animated.Value(0.8))[0];
@@ -79,15 +81,15 @@ export default function SplashScreen({ navigation }) {
       })
     ]).start();
 
-    // Always navigate after 1 second
+    // Navigate after 1.2s (matches native splash duration)
     const timeout = setTimeout(() => {
       if (navigation && typeof navigation.replace === 'function') {
         navigation.replace('Main');
       }
-    }, 1000);
+    }, 1200);
 
     return () => clearTimeout(timeout);
-  }, []);
+  }, [navigation]);
 
   const handleLetsGo = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -127,15 +129,14 @@ export default function SplashScreen({ navigation }) {
           <Animated.View style={[styles.logoContainer, { 
             opacity: fadeAnim,
             transform: [{ scale: logoScale }] 
-          }]}>
-            <LinearGradient
-              colors={['#3b82f6', '#2563eb']}
-              style={styles.logo}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <Feather name="box" size={48} color="white" />
-            </LinearGradient>
+          }]}> 
+            <View style={styles.logo}>
+              <Image
+                source={require('../assets/appstore.png')}
+                style={{ width: width * 0.35, height: width * 0.35, maxWidth: 220, maxHeight: 220, borderRadius: 24 }}
+                resizeMode="contain"
+              />
+            </View>
           </Animated.View>
           
           {/* Title with slide up animation */}
@@ -158,28 +159,7 @@ export default function SplashScreen({ navigation }) {
           ]}>
             Your personal document fortress
           </Animated.Text>
-          
-          {/* Button with fade and scale animations */}
-          <Animated.View style={{ 
-            opacity: buttonFade,
-            transform: [{ scale: buttonScale }] 
-          }}>
-            <TouchableOpacity 
-              style={styles.button} 
-              onPress={handleLetsGo} 
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={['#3b82f6', '#2563eb']}
-                style={styles.buttonGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <Text style={styles.buttonText}>Get Started</Text>
-                <Feather name="arrow-right" size={24} color="white" style={styles.buttonIcon} />
-              </LinearGradient>
-            </TouchableOpacity>
-          </Animated.View>
+          {/* Removed Get Started button for splash auto-navigation */}
         </View>
       </LinearGradient>
     </SafeAreaView>
@@ -236,32 +216,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 32,
     paddingHorizontal: 8,
-  },
-  button: {
-    width: width - 64,
-    borderRadius: 14,
-    overflow: 'hidden',
-    shadowColor: '#2563eb',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  buttonGradient: {
-    paddingVertical: 18,
-    paddingHorizontal: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
-    letterSpacing: 0.5,
-  },
-  buttonIcon: {
-    marginLeft: 10,
   },
 });
