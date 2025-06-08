@@ -4,6 +4,7 @@ import { View, StyleSheet } from 'react-native';
 import BottomTabNavigator from './BottomTabNavigator';
 import FloatingActionButton from '../components/FloatingActionButton';
 import { useThemeMode } from '../contexts/ThemeContext';
+import SplashScreen from '../components/SplashScreen';
 
 const Stack = createStackNavigator();
 
@@ -12,7 +13,7 @@ export default function AppNavigator() {
   return (
     <View style={[styles.container, colorScheme === 'dark' && { backgroundColor: '#181926' }]}> 
       <Stack.Navigator 
-        initialRouteName="Main"
+        initialRouteName="Splash"
         screenOptions={{ 
           headerShown: false,
           cardStyle: { 
@@ -21,6 +22,7 @@ export default function AppNavigator() {
           }
         }}
       >
+        <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="Main" component={BottomTabNavigator} />
       </Stack.Navigator>
       <FloatingActionButton />

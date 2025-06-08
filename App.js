@@ -6,7 +6,6 @@ import { DocumentsProvider } from './contexts/DocumentsContext';
 import { ThemeProvider, useThemeMode } from './contexts/ThemeContext';
 import * as Notifications from 'expo-notifications';
 import { NotificationSettingsProvider } from './contexts/NotificationSettingsContext';
-import * as SplashScreen from 'expo-splash-screen';
 
 function AppContent() {
   const { theme } = useThemeMode();
@@ -26,23 +25,23 @@ function AppContent() {
 
 export default function App() {
   useEffect(() => {
-    SplashScreen.preventAutoHideAsync();
     (async () => {
-      const { status } = await Notifications.requestPermissionsAsync();
-      if (status !== 'granted') {
-        alert('Enable notifications to get Arkive expiry reminders!');
+      try {
+        // Initialize notifications
+        const { status } = await Notifications.requestPermissionsAsync();
+        if (status !== 'granted') {
+          alert('Enable notifications to get Arkive expiry reminders!');
+        }
+        Notifications.setNotificationHandler({
+          handleNotification: async () => ({
+            shouldShowAlert: true,
+            shouldPlaySound: false,
+            shouldSetBadge: false,
+          }),
+        });
+      } catch (error) {
+        console.warn('Error initializing notifications:', error);
       }
-      Notifications.setNotificationHandler({
-        handleNotification: async () => ({
-          shouldShowAlert: true,
-          shouldPlaySound: false,
-          shouldSetBadge: false,
-        }),
-      });
-      // Hide splash after app is ready
-      setTimeout(() => {
-        SplashScreen.hideAsync();
-      }, 1200); // Show splash for at least 1.2s for a smooth effect
     })();
   }, []);
 
@@ -56,6 +55,6 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 70, // Add padding for both Android and iOS
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 70,
   },
 });
