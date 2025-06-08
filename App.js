@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, StyleSheet, StatusBar, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
 import AppNavigator from './navigation/AppNavigator';
 import { DocumentsProvider } from './contexts/DocumentsContext';
 import { ThemeProvider, useThemeMode } from './contexts/ThemeContext';
@@ -15,7 +16,10 @@ function AppContent() {
       <NavigationContainer>
         <NotificationSettingsProvider>
           <DocumentsProvider>
-            <AppNavigator />
+            <Stack.Navigator screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="Splash" component={CustomSplashScreen} />
+              <Stack.Screen name="Main" component={AppNavigator} />
+            </Stack.Navigator>
           </DocumentsProvider>
         </NotificationSettingsProvider>
       </NavigationContainer>

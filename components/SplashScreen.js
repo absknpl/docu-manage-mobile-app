@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeMode } from '../contexts/ThemeContext';
+import { useNavigation } from '@react-navigation/native';
+import { Feather } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window');
 
@@ -68,7 +70,7 @@ export default function SplashScreen({ navigation }) {
     }, 1500);
 
     return () => clearTimeout(timeout);
-  }, []);
+  }, [navigation]);
 
   // Background colors
   const safeBg = isPop ? theme.faded : colorScheme === 'dark' ? '#0f172a' : '#f8fafc';
