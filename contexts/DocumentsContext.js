@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext } from 'react';
 import * as Notifications from 'expo-notifications';
 import { useNotificationSettings } from './NotificationSettingsContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const DocumentsContext = createContext();
 
@@ -8,6 +9,27 @@ export function DocumentsProvider({ children }) {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(false);
   const { notificationTime, remindBefore } = useNotificationSettings();
+
+  // Load documents from AsyncStorage on mount
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const storedDocs = await AsyncStorage.getItem('arkive_documents');
+        if (storedDocs) {
+          setDocuments(JSON.parse(storedDocs));
+        }
+      } catch (e) {
+        console.error('Failed to load documents from storage:', e);
+      }
+    })();
+  }, []);
+
+  // Persist documents to AsyncStorage whenever they change
+  React.useEffect(() => {
+    AsyncStorage.setItem('arkive_documents', JSON.stringify(documents)).catch(e => {
+      console.error('Failed to save documents:', e);
+    });
+  }, [documents]);
 
   // Helper to schedule notifications
   const scheduleDocumentNotifications = async (doc) => {
@@ -22,7 +44,8 @@ export function DocumentsProvider({ children }) {
       // Remind before (custom)
       if (remindBefore > 0) {
         const remindDate = new Date(expirationDate);
-        remindDate.setDate(remindDate.getDate() - remindBefore);
+        // If remindBefore is 30, this will be exactly 30 days before expiration
+        remindDate.setDate(remindDate.getDate() - remindBefore); // Handles 1, 3, 7, 30 (1 month before)
         remindDate.setHours(notificationTime.hour, notificationTime.minute, 0, 0);
         if (remindDate > now) {
           await Notifications.scheduleNotificationAsync({

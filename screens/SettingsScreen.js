@@ -122,7 +122,7 @@ const ThemeCard = ({ icon, label, value, isSelected, onSelect, previewColors }) 
 };
 
 export default function SettingsScreen() {
-  const [appVersion] = useState('1.0.0');
+  const [appVersion] = useState('1.0.2');
   const { themeMode, setThemeMode, colorScheme, theme, getStatusBarStyle } = useThemeMode();
   const { notificationEnabled, setNotificationEnabled, notificationTime, setNotificationTime, remindBefore, setRemindBefore } = useNotificationSettings();
   const { documents } = useDocuments();

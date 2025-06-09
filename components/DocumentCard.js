@@ -91,19 +91,29 @@ export default function DocumentCard({ document, onPress, onDelete, onEdit, isHi
   });
 
   return (
-    <Animated.View
-      style={[
-        isHighlighted && {
-          borderColor: animatedBorderColor,
-          borderWidth: 3,
-          shadowColor: animatedShadowColor,
-          shadowRadius: animatedShadowRadius,
-          shadowOpacity: 0.85,
-          shadowOffset: { width: 0, height: 0 },
-          elevation: 16,
-        },
-      ]}
-    >
+    <View style={{ position: 'relative' }}>
+      {isHighlighted && (
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 10,
+            right: 10,
+            bottom: 0,
+            borderRadius: styles.card.borderRadius,
+            // Stronger, more visible glow for both iOS and Android
+            borderWidth: 2,
+            borderColor: animatedShadowColor,
+            shadowColor: animatedShadowColor,
+            shadowRadius: animatedShadowRadius,
+            shadowOpacity: 0.95,
+            shadowOffset: { width: 0, height: 0 },
+            elevation: 24, // higher for Android
+            zIndex: 1,
+          }}
+        />
+      )}
       <TouchableOpacity
         style={[
           styles.card,
@@ -216,7 +226,7 @@ export default function DocumentCard({ document, onPress, onDelete, onEdit, isHi
           )}
         </View>
       </TouchableOpacity>
-    </Animated.View>
+    </View>
   );
 }
 

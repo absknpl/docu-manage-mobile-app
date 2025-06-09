@@ -52,12 +52,12 @@ export default function DocumentList({ searchQuery, categoryFilter, onEditDocume
     <View style={{ flex: 1, backgroundColor: isDarkMode ? '#181926' : 'transparent' }}>
       <FlatList
         data={filteredDocuments}
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <DocumentCard 
             document={item} 
             colors={colors} 
             onEdit={onEditDocument}
-            isHighlighted={isTitleMatch(item)}
+            isHighlighted={filteredDocuments.length === 1 && index === 0}
           />
         )}
         keyExtractor={item => item.id}

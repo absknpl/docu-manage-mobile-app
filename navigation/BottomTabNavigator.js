@@ -1,7 +1,10 @@
-import React from 'react';
+// navigation/BottomTabNavigator.js
+import React, { useRef, useEffect } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { StyleSheet, Platform, View, Text, Animated, Easing } from 'react-native';
+import { StyleSheet, Platform, View, Animated, Pressable, Easing } from 'react-native';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import DocumentsScreen from '../screens/DocumentsScreen';
 import TimelineScreen from '../screens/TimelineScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
@@ -10,190 +13,230 @@ import { useThemeMode } from '../contexts/ThemeContext';
 
 const Tab = createBottomTabNavigator();
 
+const ICONS = {
+  Documents: { name: 'file-document-multiple-outline', family: 'MaterialCommunityIcons' },
+  Timeline: { name: 'time-outline', family: 'Ionicons' },
+  Notifications: { name: 'notifications-outline', family: 'Ionicons' },
+  Settings: { name: 'settings-outline', family: 'Ionicons' },
+};
+
 export default function BottomTabNavigator() {
   const { colorScheme, theme } = useThemeMode();
-  const isPop = colorScheme === 'pop';
   const isDarkMode = colorScheme === 'dark';
-  
-  // Enhanced animations with spring and timing combinations
-  const tabAnimations = React.useRef({}).current;
-  const tabNames = ['Documents', 'Timeline', 'Notifications', 'Settings'];
-  
-  tabNames.forEach(name => {
-    if (!tabAnimations[name]) {
-      tabAnimations[name] = {
-        scale: new Animated.Value(1),
-        translateY: new Animated.Value(0),
-        opacity: new Animated.Value(0),
-        bgScale: new Animated.Value(0),
-        indicatorOpacity: new Animated.Value(0)
-      };
-    }
-  });
 
-  const handleTabPress = (route, focused) => {
-    const animation = tabAnimations[route.name];
-    
+  // Animation refs for each tab
+  const tabAnimations = {
+    Documents: useRef(new Animated.Value(1)).current,
+    Timeline: useRef(new Animated.Value(1)).current,
+    Notifications: useRef(new Animated.Value(1)).current,
+    Settings: useRef(new Animated.Value(1)).current,
+  };
+
+  const tabGlows = {
+    Documents: useRef(new Animated.Value(0)).current,
+    Timeline: useRef(new Animated.Value(0)).current,
+    Notifications: useRef(new Animated.Value(0)).current,
+    Settings: useRef(new Animated.Value(0)).current,
+  };
+
+  // Apple-style spring animation for icon selection
+  const animateTab = (name, focused) => {
     Animated.parallel([
-      Animated.spring(animation.scale, {
+      Animated.spring(tabAnimations[name], {
         toValue: focused ? 1.2 : 1,
         useNativeDriver: true,
-        friction: 5,
-        tension: 300,
+        damping: 7,
+        mass: 0.5,
+        stiffness: 300,
       }),
-      Animated.spring(animation.translateY, {
-        toValue: focused ? -12 : 0,
-        useNativeDriver: true,
-        friction: 6,
-        tension: 120,
-      }),
-      Animated.spring(animation.bgScale, {
-        toValue: focused ? 1 : 0,
-        useNativeDriver: true,
-        friction: 8,
-        tension: 80,
-      }),
-      Animated.timing(animation.indicatorOpacity, {
+      Animated.timing(tabGlows[name], {
         toValue: focused ? 1 : 0,
         duration: 300,
         easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
+        useNativeDriver: false,
       })
     ]).start();
   };
 
+  // Apple-style glassmorphic background
+  const GlassTabBarBackground = () => (
+    <View style={[StyleSheet.absoluteFill, { borderRadius: 28, overflow: 'hidden' }]}> 
+      {/* Base blur layer, more intense for glassmorphism */}
+      <BlurView
+        intensity={60}
+        tint={isDarkMode ? 'systemUltraThinMaterialDark' : 'systemUltraThinMaterialLight'}
+        style={StyleSheet.absoluteFill}
+      />
+      {/* Layered gradients for depth and light reflection */}
+      <LinearGradient
+        colors={isDarkMode
+          ? ['rgba(36,39,58,0.7)', 'rgba(138,173,244,0.13)', 'rgba(255,255,255,0.10)']
+          : ['rgba(255,255,255,0.7)', 'rgba(99,102,241,0.08)', 'rgba(255,255,255,0.13)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      {/* Subtle top highlight for glass edge */}
+      <LinearGradient
+        colors={['rgba(255,255,255,0.22)', 'rgba(255,255,255,0.04)', 'transparent']}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={[StyleSheet.absoluteFill, { height: '40%', borderTopLeftRadius: 28, borderTopRightRadius: 28 }]}
+        pointerEvents="none"
+      />
+      {/* Soft white border for glass edge */}
+      <View
+        pointerEvents="none"
+        style={[
+          StyleSheet.absoluteFill,
+          styles.glassBorder,
+          {
+            borderColor: 'rgba(255,255,255,0.18)',
+            borderWidth: 1.2,
+            borderRadius: 28,
+            borderTopWidth: 2,
+            borderTopColor: 'rgba(255,255,255,0.28)',
+          }
+        ]}
+      />
+      {/* Optional: subtle inner shadow for depth */}
+      <View
+        pointerEvents="none"
+        style={{
+          ...StyleSheet.absoluteFillObject,
+          borderRadius: 28,
+          borderWidth: 0,
+          shadowColor: isDarkMode ? '#000' : '#6366f1',
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.08,
+          shadowRadius: 12,
+        }}
+      />
+    </View>
+  );
+
+  // Custom tab bar button with Apple-style interactions
+  const TabBarButton = ({ children, onPress, accessibilityState }) => {
+    const scaleValue = useRef(new Animated.Value(1)).current;
+    
+    const handlePressIn = () => {
+      Animated.spring(scaleValue, {
+        toValue: 0.92,
+        useNativeDriver: true,
+        damping: 8,
+        stiffness: 500,
+      }).start();
+    };
+    
+    const handlePressOut = () => {
+      Animated.spring(scaleValue, {
+        toValue: 1,
+        useNativeDriver: true,
+        damping: 8,
+        stiffness: 500,
+      }).start();
+    };
+
+    return (
+      <Pressable
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        style={styles.tabButton}
+        accessibilityRole="button"
+        accessibilityState={accessibilityState}
+      >
+        <Animated.View style={{ transform: [{ scale: scaleValue }] }}>
+          {children}
+        </Animated.View>
+      </Pressable>
+    );
+  };
+
+  // Icon renderer with Apple-style animations
+  const renderTabIcon = (route, focused) => {
+    const iconSize = 28;
+    const activeColor = isDarkMode ? '#0A84FF' : '#007AFF';
+    const inactiveColor = isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)';
+    const iconConfig = ICONS[route.name];
+    return (
+      <>
+        <View style={styles.iconContainer}>
+          {/* Glow effect */}
+          <Animated.View
+            style={[
+              styles.iconGlow,
+              {
+                opacity: tabGlows[route.name],
+                backgroundColor: activeColor,
+              }
+            ]}
+          />
+          {/* Icon with scale animation */}
+          <Animated.View
+            style={{
+              transform: [{ scale: tabAnimations[route.name] }],
+            }}
+          >
+            {iconConfig.family === 'MaterialCommunityIcons' ? (
+              <MaterialCommunityIcons
+                name={iconConfig.name}
+                size={iconSize}
+                color={focused ? activeColor : inactiveColor}
+              />
+            ) : (
+              <Ionicons
+                name={iconConfig.name}
+                size={iconSize}
+                color={focused ? activeColor : inactiveColor}
+              />
+            )}
+          </Animated.View>
+        </View>
+      </>
+    );
+  };
+
   return (
-    <View style={[styles.container, isPop ? { backgroundColor: theme.faded } : (isDarkMode && { backgroundColor: '#0f0f17' })]}>
+    <View style={styles.container}>
       <Tab.Navigator
         initialRouteName="Documents"
         screenOptions={({ route }) => ({
           headerShown: false,
-          tabBarActiveTintColor: isPop ? theme.accent : (isDarkMode ? '#8aadf4' : '#6366f1'),
-          tabBarInactiveTintColor: isPop ? '#fc6076' : (isDarkMode ? 'rgba(138, 173, 244, 0.5)' : 'rgba(99, 102, 241, 0.5)'),
+          tabBarShowLabel: false,
           tabBarStyle: [
             styles.tabBar,
-            isPop ? {
-              backgroundColor: theme.faded,
-              borderColor: theme.accent,
-              shadowColor: theme.popShadow,
-              borderWidth: 2,
-              elevation: 16,
-            } : (isDarkMode ? styles.tabBarDark : styles.tabBarLight),
             {
-              shadowColor: isPop ? theme.popShadow : (isDarkMode ? '#8aadf4' : '#6366f1'),
-              borderTopWidth: 1,
-              borderTopColor: isPop ? theme.accent : (isDarkMode ? 'rgba(138, 173, 244, 0.15)' : 'rgba(99, 102, 241, 0.15)'),
-            }
+              left: 40, // Increased space from screen edge
+              right: 40,
+              bottom: 32, // More bottom margin for floating effect
+              borderRadius: 28,
+              minHeight: 80,
+              height: Platform.OS === 'ios' ? 84 : 74,
+              paddingBottom: Platform.OS === 'ios' ? 8 : 10,
+              paddingTop: 10,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 18 },
+              shadowOpacity: 0.18,
+              shadowRadius: 32,
+              elevation: 32,
+              backgroundColor: 'transparent',
+              borderWidth: 0,
+            },
           ],
-          tabBarItemStyle: styles.tabBarItem,
-          tabBarLabel: ({ focused, color }) => (
-            <View style={{ alignItems: 'center' }}>
-              <Text style={[
-                styles.tabBarLabel,
-                isPop && { color: focused ? theme.accent : '#fc6076', fontFamily: theme.popFont, fontWeight: 'bold', fontSize: 12, textShadowColor: theme.accent, textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 2 },
-                { color: focused ? color : (isPop ? '#fc6076' : (isDarkMode ? 'rgba(138, 173, 244, 0.7)' : 'rgba(99, 102, 241, 0.7)')), marginTop: 4 },
-                focused && styles.tabBarLabelActive
-              ]}>
-                {route.name}
-              </Text>
-            </View>
-          ),
-          tabBarIcon: ({ focused, color, size }) => {
-            React.useEffect(() => {
-              handleTabPress(route, focused);
-            }, [focused]);
-            const animation = tabAnimations[route.name];
-            const iconSize = focused ? 30 : 24;
-            // Microinteraction: pulse effect on focus
-            const pulse = animation && focused ?
-              animation.scale.interpolate({
-                inputRange: [1, 1.2],
-                outputRange: [1, 1.08],
-                extrapolate: 'clamp'
-              }) : 1;
-            return (
-              <View style={styles.iconContainer}>
-                {/* Selected tab indicator (animated underline) */}
-                <Animated.View
-                  style={[
-                    styles.selectedIndicator,
-                    isPop ? { backgroundColor: theme.accent, opacity: focused ? 1 : 0.2 } : {
-                      opacity: animation ? animation.indicatorOpacity : 0,
-                      backgroundColor: isDarkMode ? 'rgba(138, 173, 244, 0.22)' : 'rgba(99, 102, 241, 0.18)',
-                    },
-                    { transform: [ { scaleX: animation ? animation.bgScale : 0 } ] }
-                  ]}
-                />
-                {/* Icon background with glass effect and animated scale */}
-                <Animated.View
-                  style={[
-                    styles.iconBackground,
-                    isPop ? {
-                      backgroundColor: focused ? theme.accent : theme.faded,
-                      borderWidth: focused ? 2 : 1,
-                      borderColor: theme.accent,
-                      shadowColor: theme.popShadow,
-                      shadowOpacity: focused ? 0.25 : 0.1,
-                      shadowRadius: focused ? 16 : 6,
-                      shadowOffset: { width: 0, height: 4 },
-                    } : {
-                      transform: [ { scale: animation ? animation.bgScale : 0.8 } ],
-                      backgroundColor: focused
-                        ? (isDarkMode ? 'rgba(138, 173, 244, 0.18)' : 'rgba(99, 102, 241, 0.13)')
-                        : 'transparent',
-                      borderWidth: focused ? 1.5 : 0,
-                      borderColor: focused
-                        ? (isDarkMode ? 'rgba(138, 173, 244, 0.25)' : 'rgba(99, 102, 241, 0.18)')
-                        : 'transparent',
-                      shadowColor: focused ? (isDarkMode ? '#8aadf4' : '#6366f1') : 'transparent',
-                      shadowOpacity: focused ? 0.18 : 0,
-                      shadowRadius: focused ? 12 : 0,
-                      shadowOffset: { width: 0, height: 4 },
-                    }
-                  ]}
-                />
-                {/* Icon with microinteraction pulse */}
-                <Animated.View
-                  style={{
-                    transform: [
-                      { scale: pulse },
-                      { scale: animation ? animation.scale : 1 },
-                      { translateY: animation ? animation.translateY : 0 }
-                    ],
-                  }}
-                >
-                  {route.name === 'Documents' && (
-                    <MaterialCommunityIcons
-                      name="file-document-multiple-outline"
-                      size={iconSize}
-                      color={isPop ? theme.accent : color}
-                    />
-                  )}
-                  {route.name === 'Timeline' && (
-                    <Ionicons
-                      name="time-outline"
-                      size={iconSize}
-                      color={isPop ? theme.accent : color}
-                    />
-                  )}
-                  {route.name === 'Notifications' && (
-                    <Ionicons
-                      name="notifications-outline"
-                      size={iconSize}
-                      color={isPop ? theme.accent : color}
-                    />
-                  )}
-                  {route.name === 'Settings' && (
-                    <Ionicons
-                      name="settings-outline"
-                      size={iconSize}
-                      color={isPop ? theme.accent : color}
-                    />
-                  )}
-                </Animated.View>
-              </View>
-            );
+          tabBarItemStyle: {
+            height: '100%',
           },
+          tabBarButton: (props) => (
+            <TabBarButton {...props} />
+          ),
+          tabBarIcon: ({ focused }) => {
+            useEffect(() => {
+              animateTab(route.name, focused);
+            }, [focused]);
+            return renderTabIcon(route, focused);
+          },
+          tabBarBackground: () => <GlassTabBarBackground />, // keep the glassmorphism
         })}
       >
         <Tab.Screen name="Documents" component={DocumentsScreen} />
@@ -212,62 +255,41 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     position: 'absolute',
-    height: Platform.OS === 'ios' ? 96 : 84,
-    paddingBottom: Platform.OS === 'ios' ? 32 : 20,
-    borderTopWidth: 0,
-    marginHorizontal: 24,
-    marginBottom: 24,
-    borderRadius: 24,
-    overflow: 'hidden',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    borderWidth: 1,
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 16,
+    // left/right/bottom now set in screenOptions for more control
+    borderRadius: 28,
+    overflow: 'visible',
+    borderWidth: 0,
+    shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.18,
+    shadowRadius: 32,
+    elevation: 32,
+    backgroundColor: 'transparent',
   },
-  tabBarLight: {
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
-    borderColor: 'rgba(99, 102, 241, 0.25)', // More visible border
+  glassBorder: {
+    borderRadius: 28,
+    borderWidth: 1.2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.10,
+    shadowRadius: 6,
   },
-  tabBarDark: {
-    backgroundColor: 'rgba(20, 22, 37, 0.92)',
-    borderColor: 'rgba(138, 173, 244, 0.25)', // More visible border
-  },
-  tabBarItem: {
+  tabButton: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     height: '100%',
-    paddingVertical: 8,
   },
   iconContainer: {
-    width: 56,
-    height: 56,
-    alignItems: 'center',
+    width: 50,
+    height: 50,
     justifyContent: 'center',
+    alignItems: 'center',
     position: 'relative',
   },
-  selectedIndicator: {
-    position: 'absolute',
-    bottom: 8,
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-  },
-  iconBackground: {
+  iconGlow: {
     position: 'absolute',
     width: 40,
     height: 40,
     borderRadius: 20,
-  },
-  tabBarLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    textTransform: 'capitalize',
-    includeFontPadding: false,
-  },
-  tabBarLabelActive: {
-    fontWeight: '800',
+    opacity: 0,
   },
 });
