@@ -117,7 +117,7 @@ export default function SplashScreen({ navigation }) {
               color: isPop ? theme.textSecondary : colorScheme === 'dark' ? '#94a3b8' : '#64748b'
             }
           ]}>
-            Your documents, Handled with care
+            Your documents, handled with care.<Feather name="heart" size={14} color="#f43f5e" />
           </Animated.Text>
 
           {/* Elegant progress indicator */}

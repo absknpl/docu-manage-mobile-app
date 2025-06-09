@@ -31,11 +31,13 @@ const themeOptions = [
   { label: 'Dark', value: 'dark', icon: 'moon' },
 ];
 
+// Replace REMIND_OPTIONS with new options including 1 month before
 const REMIND_OPTIONS = [
   { label: 'On the day', value: 0 },
   { label: '1 day before', value: 1 },
   { label: '3 days before', value: 3 },
   { label: '1 week before', value: 7 },
+  { label: '1 month before', value: 30 },
 ];
 
 const SettingsItem = ({ icon, label, value, onPress, isLast, children }) => {
@@ -119,41 +121,6 @@ const ThemeCard = ({ icon, label, value, isSelected, onSelect, previewColors }) 
   );
 };
 
-const RemindMeBeforeSelector = ({ value, onChange, options, onConfirm, onCancel, visible, colorScheme }) => {
-  if (!visible) return null;
-  return (
-    <View style={styles.remindModalOverlay}>
-      <View style={[styles.remindModal, colorScheme === 'dark' && { backgroundColor: '#181926' }]}> 
-        <Text style={[styles.remindModalTitle, colorScheme === 'dark' && { color: '#8aadf4' }]}>Remind Me Before</Text>
-        {options.map(opt => (
-          <TouchableOpacity
-            key={opt.value}
-            style={[
-              styles.remindModalOption,
-              value === opt.value && styles.remindModalOptionSelected
-            ]}
-            onPress={() => onChange(opt.value)}
-            activeOpacity={0.8}
-          >
-            <Text style={[
-              styles.remindModalOptionText,
-              value === opt.value && styles.remindModalOptionTextSelected
-            ]}>{opt.label}</Text>
-          </TouchableOpacity>
-        ))}
-        <View style={styles.remindModalActions}>
-          <TouchableOpacity style={styles.remindModalButton} onPress={onCancel}>
-            <Text style={styles.remindModalButtonText}>Cancel</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.remindModalButton, styles.remindModalButtonConfirm]} onPress={onConfirm}>
-            <Text style={[styles.remindModalButtonText, styles.remindModalButtonConfirmText]}>Confirm</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
-  );
-};
-
 export default function SettingsScreen() {
   const [appVersion] = useState('1.0.0');
   const { themeMode, setThemeMode, colorScheme, theme, getStatusBarStyle } = useThemeMode();
@@ -163,7 +130,7 @@ export default function SettingsScreen() {
   const [headerScale] = useState(new Animated.Value(1));
   const [tempNotificationTime, setTempNotificationTime] = useState(new Date(0,0,0,notificationTime.hour, notificationTime.minute));
   const [tempRemindBefore, setTempRemindBefore] = useState(remindBefore);
-  const [showRemindConfirm, setShowRemindConfirm] = useState(false);
+  const [showRemindInline, setShowRemindInline] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showSplash, setShowSplash] = useState(false);
   const [versionTapCount, setVersionTapCount] = useState(0);
@@ -182,11 +149,11 @@ const handleRate = () => {
   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   
   // Platform-specific app store URLs
-  const appStoreUrl = 'itms-apps://itunes.apple.com/app/[YOUR_APP_ID]?action=write-review';
+  const appStoreUrl = 'itms-apps://itunes.apple.com/app/6747009867?action=write-review';
   const playStoreUrl = 'market://details?id=[YOUR_PACKAGE_NAME]';
   
   // Fallback URLs in case the app store app isn't available
-  const appStoreWebUrl = 'https://apps.apple.com/app/[YOUR_APP_ID]?action=write-review';
+  const appStoreWebUrl = 'https://apps.apple.com/app/6747009867?action=write-review';
   const playStoreWebUrl = 'https://play.google.com/store/apps/details?id=[YOUR_PACKAGE_NAME]';
 
   const url = Platform.select({
@@ -235,16 +202,9 @@ const handleRate = () => {
     ]).start();
   };
 
-  // Version tap handler
+  // Version tap handler (now opens website instead of splash)
   const handleVersionPress = () => {
-    setVersionTapCount(count => {
-      if (count + 1 >= 3) {
-        setShowSplash(true);
-        setTimeout(() => setShowSplash(false), 1800); // Show splash for 1.8s
-        return 0;
-      }
-      return count + 1;
-    });
+    Linking.openURL('https://www.abisek.dev/arkive');
   };
 
   // Export documents as CSV (title, expiration date, tag, etc.)
@@ -421,90 +381,103 @@ const handleRate = () => {
               ios_backgroundColor="#e2e8f0"
             />
           </SettingsItem>
-         <SettingsItem 
-  icon="clock" 
-  label="Notification Time" 
-  onPress={notificationEnabled ? () => setShowTimePicker(true) : undefined}
->
-  <TouchableOpacity
-    onPress={notificationEnabled ? () => setShowTimePicker(true) : undefined}
-    activeOpacity={notificationEnabled ? 0.7 : 1}
-    style={{ flexDirection: 'row', alignItems: 'center', opacity: notificationEnabled ? 1 : 0.4 }}
-    disabled={!notificationEnabled}
-  >
-    <Feather 
-      name="clock" 
-      size={18} 
-      color={notificationEnabled ? (colorScheme === 'dark' ? '#8aadf4' : '#6366f1') : '#bfc6e6'} 
-      style={{ marginRight: 6 }} 
-    />
-    <Text style={[
-      styles.timeText,
-      colorScheme === 'dark' && styles.timeTextDark,
-      !notificationEnabled && styles.timeTextDisabled
-    ]}>
-      {tempNotificationTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-    </Text>
-  </TouchableOpacity>
-</SettingsItem>
+          <SettingsItem 
+            icon="clock" 
+            label="Notification Time" 
+            onPress={notificationEnabled ? () => setShowTimePicker(true) : undefined}
+          >
+            <TouchableOpacity
+              onPress={notificationEnabled ? () => setShowTimePicker(true) : undefined}
+              activeOpacity={notificationEnabled ? 0.7 : 1}
+              style={{ flexDirection: 'row', alignItems: 'center', opacity: notificationEnabled ? 1 : 0.4 }}
+              disabled={!notificationEnabled}
+            >
+              <Feather 
+                name="clock" 
+                size={18} 
+                color={notificationEnabled ? (colorScheme === 'dark' ? '#8aadf4' : '#6366f1') : '#bfc6e6'} 
+                style={{ marginRight: 6 }} 
+              />
+              <Text style={[
+                styles.timeText,
+                colorScheme === 'dark' && styles.timeTextDark,
+                !notificationEnabled && styles.timeTextDisabled
+              ]}>
+                {tempNotificationTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </Text>
+            </TouchableOpacity>
+          </SettingsItem>
+          {/* Inline Remind Me Before selector */}
           <SettingsItem
             icon="calendar"
             label="Remind Me Before"
             value={REMIND_OPTIONS.find(opt => opt.value === tempRemindBefore)?.label}
-            onPress={notificationEnabled ? () => setShowRemindConfirm(true) : undefined}
+            onPress={notificationEnabled ? () => setShowRemindInline(true) : undefined}
             isLast={true}
           >
-            {/* Lower opacity if notifications are off */}
             <View style={!notificationEnabled ? { opacity: 0.4 } : null} pointerEvents={notificationEnabled ? 'auto' : 'none'} />
           </SettingsItem>
         </View>
         {showTimePicker && (
           <View style={{ marginHorizontal: 16, marginTop: 8, marginBottom: 16, backgroundColor: colorScheme === 'dark' ? '#232946' : '#fff', borderRadius: 12, padding: 16, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 }}>
             <Text style={{ fontSize: 16, fontWeight: '600', color: colorScheme === 'dark' ? '#8aadf4' : '#334155', marginBottom: 12 }}>Set Notification Time</Text>
-            <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 16 }}>
-              <TouchableOpacity
-                onPress={() => {
-                  let hour = tempNotificationTime.getHours() - 1;
-                  if (hour < 0) hour = 23;
-                  setTempNotificationTime(new Date(0, 0, 0, hour, tempNotificationTime.getMinutes()));
-                }}
-                style={{ padding: 8 }}
-              >
-                <Text style={{ fontSize: 28, color: colorScheme === 'dark' ? '#8aadf4' : '#6366f1', fontWeight: 'bold' }}>-</Text>
-              </TouchableOpacity>
-              <Text style={{ fontSize: 32, fontWeight: '700', width: 50, textAlign: 'center', color: colorScheme === 'dark' ? '#fff' : '#232946' }}>{tempNotificationTime.getHours().toString().padStart(2, '0')}</Text>
-              <Text style={{ fontSize: 32, fontWeight: '700', color: colorScheme === 'dark' ? '#fff' : '#232946' }}>:</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  let minute = tempNotificationTime.getMinutes() - 1;
-                  if (minute < 0) minute = 59;
-                  setTempNotificationTime(new Date(0, 0, 0, tempNotificationTime.getHours(), minute));
-                }}
-                style={{ padding: 8 }}
-              >
-                <Text style={{ fontSize: 28, color: colorScheme === 'dark' ? '#8aadf4' : '#6366f1', fontWeight: 'bold' }}>-</Text>
-              </TouchableOpacity>
-              <Text style={{ fontSize: 32, fontWeight: '700', width: 50, textAlign: 'center', color: colorScheme === 'dark' ? '#fff' : '#232946' }}>{tempNotificationTime.getMinutes().toString().padStart(2, '0')}</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  let minute = tempNotificationTime.getMinutes() + 1;
-                  if (minute > 59) minute = 0;
-                  setTempNotificationTime(new Date(0, 0, 0, tempNotificationTime.getHours(), minute));
-                }}
-                style={{ padding: 8 }}
-              >
-                <Text style={{ fontSize: 28, color: colorScheme === 'dark' ? '#8aadf4' : '#6366f1', fontWeight: 'bold' }}>+</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => {
-                  let hour = tempNotificationTime.getHours() + 1;
-                  if (hour > 23) hour = 0;
-                  setTempNotificationTime(new Date(0, 0, 0, hour, tempNotificationTime.getMinutes()));
-                }}
-                style={{ padding: 8 }}
-              >
-                <Text style={{ fontSize: 28, color: colorScheme === 'dark' ? '#8aadf4' : '#6366f1', fontWeight: 'bold' }}>+</Text>
-              </TouchableOpacity>
+            <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-end', marginBottom: 16 }}>
+              {/* Hour Selector */}
+              <View style={{ alignItems: 'center', marginHorizontal: 12 }}>
+                <TouchableOpacity
+                  onPress={() => {
+                    let hour = tempNotificationTime.getHours() + 1;
+                    if (hour > 23) hour = 0;
+                    setTempNotificationTime(new Date(0, 0, 0, hour, tempNotificationTime.getMinutes()));
+                  }}
+                  style={{ padding: 8 }}
+                >
+                  <Text style={{ fontSize: 28, color: colorScheme === 'dark' ? '#8aadf4' : '#6366f1', fontWeight: 'bold' }}>+</Text>
+                </TouchableOpacity>
+                <Text style={{ fontSize: 32, fontWeight: '700', width: 50, textAlign: 'center', color: colorScheme === 'dark' ? '#fff' : '#232946' }}>
+                  {tempNotificationTime.getHours().toString().padStart(2, '0')}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    let hour = tempNotificationTime.getHours() - 1;
+                    if (hour < 0) hour = 23;
+                    setTempNotificationTime(new Date(0, 0, 0, hour, tempNotificationTime.getMinutes()));
+                  }}
+                  style={{ padding: 8 }}
+                >
+                  <Text style={{ fontSize: 28, color: colorScheme === 'dark' ? '#8aadf4' : '#6366f1', fontWeight: 'bold' }}>-</Text>
+                </TouchableOpacity>
+                <Text style={{ fontSize: 14, color: colorScheme === 'dark' ? '#8aadf4' : '#64748b', marginTop: 4 }}>Hour</Text>
+              </View>
+              {/* Colon */}
+              <Text style={{ fontSize: 32, fontWeight: '700', color: colorScheme === 'dark' ? '#fff' : '#232946', marginBottom: 24 }}>:</Text>
+              {/* Minute Selector */}
+              <View style={{ alignItems: 'center', marginHorizontal: 12 }}>
+                <TouchableOpacity
+                  onPress={() => {
+                    let minute = tempNotificationTime.getMinutes() + 1;
+                    if (minute > 59) minute = 0;
+                    setTempNotificationTime(new Date(0, 0, 0, tempNotificationTime.getHours(), minute));
+                  }}
+                  style={{ padding: 8 }}
+                >
+                  <Text style={{ fontSize: 28, color: colorScheme === 'dark' ? '#8aadf4' : '#6366f1', fontWeight: 'bold' }}>+</Text>
+                </TouchableOpacity>
+                <Text style={{ fontSize: 32, fontWeight: '700', width: 50, textAlign: 'center', color: colorScheme === 'dark' ? '#fff' : '#232946' }}>
+                  {tempNotificationTime.getMinutes().toString().padStart(2, '0')}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    let minute = tempNotificationTime.getMinutes() - 1;
+                    if (minute < 0) minute = 59;
+                    setTempNotificationTime(new Date(0, 0, 0, tempNotificationTime.getHours(), minute));
+                  }}
+                  style={{ padding: 8 }}
+                >
+                  <Text style={{ fontSize: 28, color: colorScheme === 'dark' ? '#8aadf4' : '#6366f1', fontWeight: 'bold' }}>-</Text>
+                </TouchableOpacity>
+                <Text style={{ fontSize: 14, color: colorScheme === 'dark' ? '#8aadf4' : '#64748b', marginTop: 4 }}>Minute</Text>
+              </View>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12 }}>
               <TouchableOpacity
@@ -515,12 +488,61 @@ const handleRate = () => {
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => {
-                  setShowTimePicker(false);
-                  setNotificationTime({ hour: tempNotificationTime.getHours(), minute: tempNotificationTime.getMinutes() });
+                  setUserNotificationTime(tempNotificationTime.getHours(), tempNotificationTime.getMinutes());
                 }}
                 style={{ paddingVertical: 8, paddingHorizontal: 18, borderRadius: 8, backgroundColor: '#6366f1' }}
               >
                 <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>Set</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+        {/* Inline Remind Me Before selector UI */}
+        {showRemindInline && (
+          <View style={{ marginHorizontal: 16, marginTop: 8, marginBottom: 16, backgroundColor: colorScheme === 'dark' ? '#232946' : '#fff', borderRadius: 12, padding: 16, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 }}>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: colorScheme === 'dark' ? '#8aadf4' : '#334155', marginBottom: 12 }}>Remind Me Before</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginBottom: 16 }}>
+              {REMIND_OPTIONS.map(opt => (
+                <TouchableOpacity
+                  key={opt.value}
+                  onPress={() => setTempRemindBefore(opt.value)}
+                  style={{
+                    paddingVertical: 10,
+                    paddingHorizontal: 16,
+                    borderRadius: 8,
+                    margin: 4,
+                    backgroundColor: tempRemindBefore === opt.value
+                      ? (colorScheme === 'dark' ? '#6366f1' : '#6366f1')
+                      : (colorScheme === 'dark' ? '#232946' : '#f1f5f9'),
+                  }}
+                >
+                  <Text style={{
+                    color: tempRemindBefore === opt.value
+                      ? '#fff'
+                      : (colorScheme === 'dark' ? '#8aadf4' : '#334155'),
+                    fontWeight: '600',
+                    fontSize: 15,
+                  }}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12 }}>
+              <TouchableOpacity
+                onPress={() => setShowRemindInline(false)}
+                style={{ paddingVertical: 8, paddingHorizontal: 18, borderRadius: 8, backgroundColor: '#e2e8f0', marginRight: 10 }}
+              >
+                <Text style={{ color: '#334155', fontWeight: '600', fontSize: 16 }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  setRemindBefore(tempRemindBefore);
+                  setShowRemindInline(false);
+                }}
+                style={{ paddingVertical: 8, paddingHorizontal: 18, borderRadius: 8, backgroundColor: '#6366f1' }}
+              >
+                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>Confirm</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -565,22 +587,10 @@ const handleRate = () => {
 
         </View>
         <View style={styles.footer}>
-          <Text style={[styles.footerText, colorScheme === 'dark' && { color: '#8aadf4' }]}>Made with <Feather name="heart" size={14} color="#f43f5e" /> by Abhishek</Text>
+          <Text style={[styles.footerText, colorScheme === 'dark' && { color: '#8aadf4' }]}>Made with <Feather name="heart" size={14} color="#f43f5e" /> by abisek</Text>
           <Text style={[styles.footerText, colorScheme === 'dark' && { color: '#8aadf4' }]}>© {new Date().getFullYear()} Abhishek Nepal</Text>
         </View>
       </ScrollView>
-      <RemindMeBeforeSelector
-        value={tempRemindBefore}
-        onChange={setTempRemindBefore}
-        options={REMIND_OPTIONS}
-        onConfirm={() => {
-          setRemindBefore(tempRemindBefore);
-          setShowRemindConfirm(false);
-        }}
-        onCancel={() => setShowRemindConfirm(false)}
-        visible={showRemindConfirm}
-        colorScheme={colorScheme}
-      />
     </SafeAreaView>
   );
 }
@@ -754,79 +764,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     marginBottom: 4,
-  },
-  remindModalOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.25)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 100,
-  },
-  remindModal: {
-    backgroundColor: '#fff',
-    borderRadius: 18,
-    padding: 24,
-    width: 320,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 10,
-    alignItems: 'stretch',
-  },
-  remindModalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#334155',
-    marginBottom: 18,
-    textAlign: 'center',
-  },
-  remindModalOption: {
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    marginBottom: 8,
-    backgroundColor: '#f1f5f9',
-  },
-  remindModalOptionSelected: {
-    backgroundColor: '#6366f1',
-  },
-  remindModalOptionText: {
-    fontSize: 16,
-    color: '#334155',
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  remindModalOptionTextSelected: {
-    color: '#fff',
-  },
-  remindModalActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 16,
-  },
-  remindModalButton: {
-    flex: 1,
-    backgroundColor: '#e2e8f0',
-    borderRadius: 8,
-    paddingVertical: 10,
-    marginHorizontal: 6,
-    alignItems: 'center',
-  },
-  remindModalButtonText: {
-    color: '#334155',
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  remindModalButtonConfirm: {
-    backgroundColor: '#6366f1',
-  },
-  remindModalButtonConfirmText: {
-    color: '#fff',
   },
   disabledOverlay: {
     ...StyleSheet.absoluteFillObject,

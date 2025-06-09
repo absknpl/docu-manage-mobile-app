@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Appearance, Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Create the ThemeContext
 const ThemeContext = createContext();
@@ -64,9 +65,34 @@ const getStatusBarStyle = (bgColor) => {
 export function ThemeProvider({ children }) {
   // Initialize with system color scheme or default to 'light'
   const systemColorScheme = Appearance.getColorScheme() || 'light';
-  const [themeMode, setThemeMode] = useState(systemColorScheme);
+  const [themeMode, setThemeModeState] = useState(systemColorScheme);
   const [colorScheme, setColorScheme] = useState(systemColorScheme);
   const [theme, setTheme] = useState(themes[systemColorScheme]);
+
+  // Load themeMode from AsyncStorage on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const storedTheme = await AsyncStorage.getItem('arkive_theme_mode');
+        if (storedTheme) {
+          setThemeModeState(storedTheme);
+        }
+      } catch (e) {
+        console.error('Failed to load theme mode:', e);
+      }
+    })();
+  }, []);
+
+  // Save themeMode to AsyncStorage whenever it changes
+  useEffect(() => {
+    AsyncStorage.setItem('arkive_theme_mode', themeMode).catch(e => {
+      console.error('Failed to save theme mode:', e);
+    });
+  }, [themeMode]);
+
+  const setThemeMode = (mode) => {
+    setThemeModeState(mode);
+  };
 
   useEffect(() => {
     if (themeMode === 'pop') {

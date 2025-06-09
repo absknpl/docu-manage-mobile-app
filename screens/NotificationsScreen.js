@@ -400,13 +400,18 @@ export default function NotificationsScreen({ navigation }) {
       }
       // Combine all notifications
       const allNotifs = [...scheduled, ...delivered, ...history];
-      // Deduplicate by identifier and sort by date (newest first)
+      // Deduplicate by identifier and filter scheduled notifications by trigger time
       const seenIds = new Set();
+      const now = new Date();
       const mapped = allNotifs
         .filter((n) => {
           if (seenIds.has(n.identifier)) return false;
           seenIds.add(n.identifier);
-          return true;
+          // Only show scheduled notifications if their trigger time is in the past
+          if (n.trigger?.value) {
+            return new Date(n.trigger.value) <= now;
+          }
+          return true; // delivered/history notifications
         })
         .map((n, idx) => ({
           id: n.identifier || idx.toString(),
@@ -416,7 +421,7 @@ export default function NotificationsScreen({ navigation }) {
           date: n.date || (n.trigger?.value ? new Date(n.trigger.value) : new Date()),
           read: false,
         }))
-        .sort((a, b) => b.date - a.date); // Sort by date, newest first
+        .sort((a, b) => b.date - a.date);
       setNotifications(mapped);
     } catch (error) {
       console.error("Error fetching notifications:", error);

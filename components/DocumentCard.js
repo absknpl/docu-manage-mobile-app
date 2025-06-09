@@ -1,16 +1,40 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Share, Platform } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Share, Platform, Animated } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { TAG_ICONS } from './TagIcons';
 import { useDocuments } from '../contexts/DocumentsContext';
 import { useThemeMode } from '../contexts/ThemeContext';
 
-export default function DocumentCard({ document, onPress, onDelete, onEdit }) {
+export default function DocumentCard({ document, onPress, onDelete, onEdit, isHighlighted }) {
   const { deleteDocument } = useDocuments();
   const { colorScheme, theme } = useThemeMode();
   const isPop = colorScheme === 'pop';
   const isDarkMode = colorScheme === 'dark';
+
+  const glowAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (isHighlighted) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(glowAnim, {
+            toValue: 1,
+            duration: 900,
+            useNativeDriver: false,
+          }),
+          Animated.timing(glowAnim, {
+            toValue: 0,
+            duration: 900,
+            useNativeDriver: false,
+          }),
+        ])
+      ).start();
+    } else {
+      glowAnim.stopAnimation();
+      glowAnim.setValue(0);
+    }
+  }, [isHighlighted]);
 
   const getFileIcon = () => {
     if (document.file?.type?.includes('pdf')) return '📄';
@@ -52,119 +76,147 @@ export default function DocumentCard({ document, onPress, onDelete, onEdit }) {
     }
   };
 
+  // Interpolate border and shadow color for golden glow
+  const animatedBorderColor = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['#ffd700', '#fff7b2'] // gold to light gold
+  });
+  const animatedShadowColor = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['#ffd700', '#fff7b2']
+  });
+  const animatedShadowRadius = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [12, 24]
+  });
+
   return (
-    <TouchableOpacity
+    <Animated.View
       style={[
-        styles.card,
-        isPop && {
-          backgroundColor: theme.card,
-          borderColor: theme.accent,
-          shadowColor: theme.popShadow,
-          borderWidth: 2.5,
-          elevation: 12,
-          transform: [{ rotate: '-1.5deg' }],
-          shadowOpacity: 0.25,
-          shadowRadius: 16,
-          shadowOffset: { width: 0, height: 8 },
-        },
-        !isPop && {
-          backgroundColor: theme.card,
-          borderColor: theme.border,
-          shadowColor: isDarkMode ? '#000' : '#64748b',
+        isHighlighted && {
+          borderColor: animatedBorderColor,
+          borderWidth: 3,
+          shadowColor: animatedShadowColor,
+          shadowRadius: animatedShadowRadius,
+          shadowOpacity: 0.85,
+          shadowOffset: { width: 0, height: 0 },
+          elevation: 16,
         },
       ]}
-      onPress={onPress}
-      activeOpacity={0.92}
     >
-      <View style={styles.cardHeader}>
-        <Text style={[
-          styles.documentIcon,
+      <TouchableOpacity
+        style={[
+          styles.card,
           isPop && {
-            textShadowColor: theme.accent,
-            textShadowOffset: { width: 2, height: 2 },
-            textShadowRadius: 6,
-            color: theme.accent,
+            backgroundColor: theme.card,
+            borderColor: theme.accent,
+            shadowColor: theme.popShadow,
+            borderWidth: 2.5,
+            elevation: 12,
+            transform: [{ rotate: '-1.5deg' }],
+            shadowOpacity: 0.25,
+            shadowRadius: 16,
+            shadowOffset: { width: 0, height: 8 },
           },
-        ]}>{getFileIcon()}</Text>
-        <View style={styles.cardActions}>
-          <TouchableOpacity 
-            onPress={handleEdit}
-            style={styles.actionButton}
-          >
-            <Feather name="edit-2" size={20} color={isPop ? theme.accent : theme.icon} />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            onPress={handleDelete}
-            style={styles.actionButton}
-          >
-            <Feather name="trash-2" size={20} color={isPop ? theme.error : theme.icon} />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            onPress={handleShare}
-            style={styles.actionButton}
-          >
-            <Feather name="share-2" size={20} color={isPop ? theme.accent : theme.icon} />
-          </TouchableOpacity>
+          !isPop && {
+            backgroundColor: theme.card,
+            borderColor: theme.border,
+            shadowColor: isDarkMode ? '#000' : '#64748b',
+          },
+        ]}
+        onPress={onPress}
+        activeOpacity={0.92}
+      >
+        <View style={styles.cardHeader}>
+          <Text style={[
+            styles.documentIcon,
+            isPop && {
+              textShadowColor: theme.accent,
+              textShadowOffset: { width: 2, height: 2 },
+              textShadowRadius: 6,
+              color: theme.accent,
+            },
+          ]}>{getFileIcon()}</Text>
+          <View style={styles.cardActions}>
+            <TouchableOpacity 
+              onPress={handleEdit}
+              style={styles.actionButton}
+            >
+              <Feather name="edit-2" size={20} color={isPop ? theme.accent : theme.icon} />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              onPress={handleDelete}
+              style={styles.actionButton}
+            >
+              <Feather name="trash-2" size={20} color={isPop ? theme.error : theme.icon} />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              onPress={handleShare}
+              style={styles.actionButton}
+            >
+              <Feather name="share-2" size={20} color={isPop ? theme.accent : theme.icon} />
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-      <View style={styles.documentInfo}>
-        <Text style={[
-          styles.title,
-          { color: theme.text },
-          isPop && {
-            fontFamily: theme.popFont,
-            fontWeight: 'bold',
-            fontSize: 22,
-            color: theme.accent,
-            letterSpacing: 0.5,
-          },
-        ]}>{document.title}</Text>
-        {document.category && (
-          <View style={[
-            styles.category,
-            isPop
-              ? {
-                  backgroundColor: theme.faded,
-                  borderColor: theme.accent,
-                  borderWidth: 2,
-                  shadowColor: theme.accent,
-                  shadowOpacity: 0.12,
-                  shadowRadius: 8,
-                  marginTop: 2,
-                }
-              : { backgroundColor: isDarkMode ? 'rgba(99,102,241,0.18)' : 'rgba(99,102,241,0.1)' },
-          ]}>
-            {TAG_ICONS[document.category] || TAG_ICONS['Other']}
-            <Text style={[
-              styles.categoryText,
-              { color: theme.accent },
-              isPop && {
-                fontFamily: theme.popFont,
-                fontWeight: 'bold',
-                fontSize: 15,
-                letterSpacing: 0.2,
-              },
-            ]}>{document.category}</Text>
-          </View>
-        )}
-        {document.expirationDate && (
-          <View style={styles.expiry}>
-            <Feather name="calendar" size={16} color={isPop ? theme.accent : theme.icon} />
-            <Text style={[
-              styles.expiryText,
-              { color: isPop ? theme.accent : theme.icon },
-              isPop && {
-                fontFamily: theme.popFont,
-                fontWeight: 'bold',
-                fontSize: 15,
-              },
+        <View style={styles.documentInfo}>
+          <Text style={[
+            styles.title,
+            { color: theme.text },
+            isPop && {
+              fontFamily: theme.popFont,
+              fontWeight: 'bold',
+              fontSize: 22,
+              color: theme.accent,
+              letterSpacing: 0.5,
+            },
+          ]}>{document.title}</Text>
+          {document.category && (
+            <View style={[
+              styles.category,
+              isPop
+                ? {
+                    backgroundColor: theme.faded,
+                    borderColor: theme.accent,
+                    borderWidth: 2,
+                    shadowColor: theme.accent,
+                    shadowOpacity: 0.12,
+                    shadowRadius: 8,
+                    marginTop: 2,
+                  }
+                : { backgroundColor: isDarkMode ? 'rgba(99,102,241,0.18)' : 'rgba(99,102,241,0.1)' },
             ]}>
-              Expires: {format(new Date(document.expirationDate), 'MMM d, yyyy')}
-            </Text>
-          </View>
-        )}
-      </View>
-    </TouchableOpacity>
+              {TAG_ICONS[document.category] || TAG_ICONS['Other']}
+              <Text style={[
+                styles.categoryText,
+                { color: theme.accent },
+                isPop && {
+                  fontFamily: theme.popFont,
+                  fontWeight: 'bold',
+                  fontSize: 15,
+                  letterSpacing: 0.2,
+                },
+              ]}>{document.category}</Text>
+            </View>
+          )}
+          {document.expirationDate && (
+            <View style={styles.expiry}>
+              <Feather name="calendar" size={16} color={isPop ? theme.accent : theme.icon} />
+              <Text style={[
+                styles.expiryText,
+                { color: isPop ? theme.accent : theme.icon },
+                isPop && {
+                  fontFamily: theme.popFont,
+                  fontWeight: 'bold',
+                  fontSize: 15,
+                },
+              ]}>
+                Expires: {format(new Date(document.expirationDate), 'MMM d, yyyy')}
+              </Text>
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 

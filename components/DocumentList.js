@@ -33,6 +33,12 @@ export default function DocumentList({ searchQuery, categoryFilter, onEditDocume
     );
   });
 
+  // Helper: check if document title matches search query exactly (case-insensitive, trimmed)
+  const isTitleMatch = (doc) => {
+    if (!searchQuery) return false;
+    return doc.title.trim().toLowerCase() === searchQuery.trim().toLowerCase();
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -51,6 +57,7 @@ export default function DocumentList({ searchQuery, categoryFilter, onEditDocume
             document={item} 
             colors={colors} 
             onEdit={onEditDocument}
+            isHighlighted={isTitleMatch(item)}
           />
         )}
         keyExtractor={item => item.id}

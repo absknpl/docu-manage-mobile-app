@@ -246,5 +246,4 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
     paddingHorizontal: 16,
   },
-  // ... other styles remain unchanged ...
 });
