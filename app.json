@@ -2,7 +2,7 @@
   "expo": {
     "name": "Arkive",
     "slug": "Arkive",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -17,7 +17,11 @@
       "bundleIdentifier": "com.arkive",
       "buildNumber": "3",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "Arkive needs access to your camera to let you take photos of documents for upload.",
+        "NSPhotoLibraryUsageDescription": "Arkive needs access to your photo library so you can select images to upload as documents.",
+        "NSPhotoLibraryAddUsageDescription": "Arkive needs permission to save documents or images to your photo library.",
+        "NSUserNotificationUsageDescription": "Arkive uses notifications to remind you about document expirations and important updates."
       }
     },
     "android": {

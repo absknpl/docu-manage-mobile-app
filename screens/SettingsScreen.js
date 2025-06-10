@@ -23,6 +23,7 @@ import * as FileSystem from 'expo-file-system';
 import { useDocuments } from '../contexts/DocumentsContext';
 import * as Notifications from 'expo-notifications';
 import * as Sharing from 'expo-sharing';
+import { useNavigation } from '@react-navigation/native';
 
 const fireworkPattern = [0, 80, 120, 40, 40, 40, 40, 40, 40, 40, 40, 40];
 const themeOptions = [
@@ -134,6 +135,7 @@ export default function SettingsScreen() {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showSplash, setShowSplash] = useState(false);
   const [versionTapCount, setVersionTapCount] = useState(0);
+  const navigation = useNavigation();
 
   const handleSupport = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -584,7 +586,12 @@ const handleRate = () => {
             label="Export Data (CSV)" 
             onPress={handleExportCSV}
           />
-
+          <SettingsItem
+            icon="book-open"
+            label="View Onboarding Tutorial"
+            onPress={() => navigation.navigate('Onboarding', { replay: true })}
+            isLast={false}
+          />
         </View>
         <View style={styles.footer}>
           <Text style={[styles.footerText, colorScheme === 'dark' && { color: '#8aadf4' }]}>Made with <Feather name="heart" size={14} color="#f43f5e" /> by abisek</Text>

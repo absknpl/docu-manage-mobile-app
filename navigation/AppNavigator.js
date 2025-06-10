@@ -5,6 +5,7 @@ import BottomTabNavigator from './BottomTabNavigator';
 import FloatingActionButton from '../components/FloatingActionButton';
 import { useThemeMode } from '../contexts/ThemeContext';
 import SplashScreen from '../components/SplashScreen';
+import OnboardingScreen from '../screens/OnboardingScreen';
 
 const Stack = createStackNavigator();
 
@@ -23,6 +24,7 @@ export default function AppNavigator() {
         }}
       >
         <Stack.Screen name="Splash" component={SplashScreen} />
+        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         <Stack.Screen name="Main" component={BottomTabNavigator} />
       </Stack.Navigator>
       <FloatingActionButton />

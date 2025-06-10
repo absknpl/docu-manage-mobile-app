@@ -15,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeMode } from '../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 
@@ -65,10 +66,14 @@ export default function SplashScreen({ navigation }) {
     ]).start();
 
     // Navigate after 2.5s (enough time to appreciate the animation)
-    const timeout = setTimeout(() => {
-      navigation.replace('Main');
+    const timeout = setTimeout(async () => {
+      const completed = await AsyncStorage.getItem('arkive_onboarding_complete');
+      if (completed === 'true') {
+        navigation.replace('Main');
+      } else {
+        navigation.replace('Onboarding');
+      }
     }, 1500);
-
     return () => clearTimeout(timeout);
   }, [navigation]);
 

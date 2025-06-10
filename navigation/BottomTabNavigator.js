@@ -10,6 +10,7 @@ import TimelineScreen from '../screens/TimelineScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import { useThemeMode } from '../contexts/ThemeContext';
+import * as Haptics from 'expo-haptics';
 
 const Tab = createBottomTabNavigator();
 
@@ -126,6 +127,8 @@ export default function BottomTabNavigator() {
         damping: 8,
         stiffness: 500,
       }).start();
+      // Subtle haptic feedback on tab press
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     };
     
     const handlePressOut = () => {

@@ -6,6 +6,7 @@ import { DocumentsProvider } from './contexts/DocumentsContext';
 import { ThemeProvider, useThemeMode } from './contexts/ThemeContext';
 import * as Notifications from 'expo-notifications';
 import { NotificationSettingsProvider } from './contexts/NotificationSettingsContext';
+import { Camera } from 'expo-camera';
 
 function AppContent() {
   const { theme } = useThemeMode();
@@ -32,6 +33,11 @@ export default function App() {
         if (status !== 'granted') {
           alert('Enable notifications to get Arkive expiry reminders!');
         }
+        // Request camera permission
+        const { status: cameraStatus } = await Camera.requestCameraPermissionsAsync();
+        if (cameraStatus !== 'granted') {
+          alert('Enable camera access to upload photos or scan documents!');
+        }
         Notifications.setNotificationHandler({
           handleNotification: async () => ({
             shouldShowAlert: true,
@@ -40,7 +46,7 @@ export default function App() {
           }),
         });
       } catch (error) {
-        console.warn('Error initializing notifications:', error);
+        console.warn('Error initializing notifications or camera permissions:', error);
       }
     })();
   }, []);
