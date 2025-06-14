@@ -4,13 +4,13 @@ import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const STORAGE_KEY_LAST_MESSAGE = 'arkive:lastEngagementMessage';
-const STORAGE_KEY_LAST_ID = 'arkive:lastEngagementNotifId';
+const STORAGE_KEY_LAST_SCHEDULED_DATE = 'arkive:lastScheduledDate';
 
 const ENGAGEMENT_MESSAGES = [
   "New to Arkive? Tap to add your first document and never miss an expiry date again.",
   "Documents expire quietly - let Arkive speak up for you. Add your passports/IDs to get started.",
   "Pro tip: Add all your insurance policies in one go. We’ll track each expiry date separately.",
-  "Your Arkive timeline is empty. Add documents to see when things expire at a glance.",
+  "Your Arkive timeline is not big. Add documents to see when things expire at a glance.",
   "Weekend task: Spend 5 minutes adding your important docs. Future-you will thank present-you.",
   "Travel soon? Add your passport to Arkive so we can remind you about renewals.",
   "Professionals save 2 hours/month by tracking licenses with Arkive. Add yours today.",
@@ -53,6 +53,9 @@ function getRandomMessageNoRepeat(lastMessage, excludeMessages = []) {
 
 export async function scheduleWeeklyEngagementNotification() {
   try {
+    // Check notification permissions before scheduling
+    const status = await Notifications.getPermissionsAsync();
+    if (!status.granted) return;
     // Get all scheduled engagement notifications
     const scheduled = await getScheduledEngagementNotifications();
     // Sort by trigger date ascending
@@ -72,19 +75,18 @@ export async function scheduleWeeklyEngagementNotification() {
       }
       futureNotifs = futureNotifs.slice(0, 10);
     }
-    // Top up to 10
-    let lastDate = futureNotifs.length > 0 ? new Date(futureNotifs[futureNotifs.length - 1].date) : new Date();
-    let lastMessage = futureNotifs.length > 0 ? futureNotifs[futureNotifs.length - 1].message : await AsyncStorage.getItem(STORAGE_KEY_LAST_MESSAGE);
-    let excludeMessages = [];
-    if (futureNotifs.length > 0) {
-      // Prevent immediate repeat
-      excludeMessages.push(lastMessage);
-    }
-    for (let i = futureNotifs.length; i < 10; ++i) {
-      // Schedule next notification 7 days after lastDate
-      let nextDate = new Date(lastDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+    // Get last scheduled date from storage
+    let lastScheduledDateStr = await AsyncStorage.getItem(STORAGE_KEY_LAST_SCHEDULED_DATE);
+    let lastScheduledDate = lastScheduledDateStr ? new Date(parseInt(lastScheduledDateStr, 10)) : null;
+    // If no notifications exist, schedule the first one for 7 days from now
+    if (futureNotifs.length === 0) {
+      const nextDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      // Prevent message repeats in buffer
+      let lastMessage = await AsyncStorage.getItem(STORAGE_KEY_LAST_MESSAGE);
+      let excludeMessages = [];
+      if (lastMessage) excludeMessages.push(lastMessage);
       const message = getRandomMessageNoRepeat(lastMessage, excludeMessages);
-      const id = await Notifications.scheduleNotificationAsync({
+      await Notifications.scheduleNotificationAsync({
         content: {
           title: 'Stay organized with Arkive',
           body: message,
@@ -94,15 +96,46 @@ export async function scheduleWeeklyEngagementNotification() {
         },
         trigger: { date: nextDate },
       });
-      // Save last message for next iteration
-      lastDate = nextDate;
-      lastMessage = message;
-      excludeMessages = [lastMessage];
       await AsyncStorage.setItem(STORAGE_KEY_LAST_MESSAGE, message);
+      await AsyncStorage.setItem(STORAGE_KEY_LAST_SCHEDULED_DATE, now.getTime().toString());
+      return;
+    }
+    // If notifications exist, check if 7 days have passed since lastScheduledDate
+    if (lastScheduledDate) {
+      const diffMs = now.getTime() - lastScheduledDate.getTime();
+      const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+      if (diffMs < sevenDaysMs) {
+        // Less than 7 days since last schedule, do nothing
+        return;
+      }
+    }
+    // If 7 days have passed, schedule the next notification for 7 days from now
+    if (futureNotifs.length < 10) {
+      // Prevent message repeats in buffer
+      let bufferMessages = futureNotifs.map(n => n.message);
+      let lastMessage = futureNotifs.length > 0 ? futureNotifs[futureNotifs.length - 1].message : await AsyncStorage.getItem(STORAGE_KEY_LAST_MESSAGE);
+      let excludeMessages = bufferMessages;
+      if (lastMessage && !excludeMessages.includes(lastMessage)) excludeMessages.push(lastMessage);
+      const message = getRandomMessageNoRepeat(lastMessage, excludeMessages);
+      const nextDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Stay organized with Arkive',
+          body: message,
+          sound: true,
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+          data: { engagement: true },
+        },
+        trigger: { date: nextDate },
+      });
+      await AsyncStorage.setItem(STORAGE_KEY_LAST_MESSAGE, message);
+      await AsyncStorage.setItem(STORAGE_KEY_LAST_SCHEDULED_DATE, now.getTime().toString());
     }
   } catch (e) {
-    // Fail silently
-    console.warn('Failed to schedule engagement notifications', e);
+    // Improved error logging for debugging
+    console.warn('Failed to schedule engagement notifications', {
+      error: e
+    });
   }
 }
 
