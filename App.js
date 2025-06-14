@@ -7,6 +7,7 @@ import { ThemeProvider, useThemeMode } from './contexts/ThemeContext';
 import * as Notifications from 'expo-notifications';
 import { NotificationSettingsProvider } from './contexts/NotificationSettingsContext';
 import { Camera } from 'expo-camera';
+import { scheduleWeeklyEngagementNotification } from './utils/engagementNotification';
 
 function AppContent() {
   const { theme } = useThemeMode();
@@ -45,6 +46,8 @@ export default function App() {
             shouldSetBadge: false,
           }),
         });
+        // Schedule weekly engagement notification (does not repeat if already scheduled)
+        await scheduleWeeklyEngagementNotification();
       } catch (error) {
         console.warn('Error initializing notifications or camera permissions:', error);
       }
